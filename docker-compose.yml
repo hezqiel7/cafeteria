@@ -1,0 +1,50 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: cafeteria-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./cafeteria_be
+      dockerfile: Dockerfile
+    container_name: cafeteria-be
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      SECRET_KEY: ${SECRET_KEY:-django-insecure-dev-only-change-me}
+      JWT_SECRET: ${JWT_SECRET:-jwt-dev-only-change-me}
+      DB_NAME: ${DB_NAME:-cafeteria}
+      DB_HOST: ${DB_HOST:-mongodb://mongo:27017/}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@cafeteria.local}
+    depends_on:
+      - mongo
+    volumes:
+      - ./cafeteria_be:/app/cafeteria_be
+
+  frontend:
+    build:
+      context: ./cafeteria_fe
+      dockerfile: Dockerfile
+    container_name: cafeteria-fe
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+    depends_on:
+      - backend
+    volumes:
+      - ./cafeteria_fe:/app/cafeteria_fe
+      - /app/cafeteria_fe/node_modules
+
+volumes:
+  mongo_data:

@@ -1,0 +1,44 @@
+services:
+  - type: web
+    name: cafeteria-backend
+    env: docker
+    plan: free
+    rootDir: cafeteria_be
+    healthCheckPath: /admin/login/
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_NAME
+        sync: false
+      - key: DB_HOST
+        sync: false
+      - key: ADMIN_USERNAME
+        value: admin
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_EMAIL
+        value: admin@cafeteria.local
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: CSRF_TRUSTED_ORIGINS
+        sync: false
+
+  - type: web
+    name: cafeteria-frontend
+    env: static
+    plan: free
+    rootDir: cafeteria_fe
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    pullRequestPreviewsEnabled: false
+    autoDeploy: true
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_API_BASE_URL
+        sync: false
