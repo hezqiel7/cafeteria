@@ -8,6 +8,7 @@ if [ -n "${ADMIN_USERNAME}" ] && [ -n "${ADMIN_PASSWORD}" ]; then
 fi
 
 if [ "${APP_ENV:-development}" = "production" ]; then
+  python manage.py collectstatic --noinput
   gunicorn cafeteria_be.wsgi:application --bind "0.0.0.0:${PORT:-8000}"
 else
   python manage.py runserver "0.0.0.0:${PORT:-8000}"
