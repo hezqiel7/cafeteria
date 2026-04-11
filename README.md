@@ -1,54 +1,323 @@
-# Cafeteria (BE + FE)
+# Cafeteria - Full Stack (Backend + Frontend)
 
-Proyecto full stack de Cafeteria con:
-- Backend: Django + DRF + MongoDB (djongo)
-- Frontend: React + Vite
+Aplicacion web para gestion de una cafeteria.
 
-## Un solo switch de entorno
+El proyecto esta dividido en dos apps:
 
-Todo el proyecto usa la variable `APP_ENV`:
-- `APP_ENV=development` -> entorno local
-- `APP_ENV=production` -> entorno Render
+- `cafeteria_be`: API REST con Django + Django REST Framework + MongoDB (djongo)
+- `cafeteria_fe`: cliente web con React + Vite
 
-## Desarrollo local con Docker Compose
+## Contenido
 
-1. Copia `.env.example` a `.env` en la raiz.
-2. Ejecuta:
+- [Arquitectura general](#arquitectura-general)
+- [Stack y componentes](#stack-y-componentes)
+- [Modelo de datos](#modelo-de-datos)
+- [Autenticacion y autorizacion](#autenticacion-y-autorizacion)
+- [Grupos y permisos](#grupos-y-permisos)
+- [API principal](#api-principal)
+- [Variables de entorno](#variables-de-entorno)
+- [Ejecucion local con Docker](#ejecucion-local-con-docker)
+- [Ejecucion local sin Docker](#ejecucion-local-sin-docker)
+- [Despliegue en Render](#despliegue-en-render)
+- [Flujo funcional de la app](#flujo-funcional-de-la-app)
+- [Estructura del repositorio](#estructura-del-repositorio)
+- [Problemas comunes](#problemas-comunes)
+
+## Arquitectura general
+
+1. El usuario inicia sesion en el frontend (`/api/token/`).
+2. El backend devuelve `access` y `refresh` JWT.
+3. El frontend guarda el token (localStorage o sessionStorage).
+4. Cada request protegida se envia con `Authorization: Bearer <token>`.
+5. La API consulta/persiste datos en MongoDB.
+
+## Stack y componentes
+
+### Backend (`cafeteria_be`)
+
+- Python 3.10
+- Django 4.1
+- Django REST Framework
+- Simple JWT
+- Djongo (MongoDB)
+- WhiteNoise (estaticos)
+- Gunicorn (produccion)
+
+### Frontend (`cafeteria_fe`)
+
+- React 18
+- Vite
+- Bootstrap
+
+### Infra local
+
+- Docker Compose con 3 servicios:
+  - `mongo` (puerto `27017`)
+  - `backend` (puerto `8000`)
+  - `frontend` (puerto `5173`)
+
+## Modelo de datos
+
+### Producto
+
+- Archivo: `cafeteria_be/productos/models.py`
+- Campos:
+  - `id` (Integer, PK)
+  - `nombre` (string)
+  - `precio` (integer)
+
+### Pedido
+
+- Archivo: `cafeteria_be/pedidos/models.py`
+- Campos:
+  - `id` (Integer, PK)
+  - `mesa` (integer)
+  - `listo` (boolean)
+  - `fecha_pedido` (datetime)
+  - `lista_productos` (JSON con `{ producto_id, cantidad }`)
+  - `total_precio` (integer)
+  - `nombre_cliente` (text)
+
+`total_precio` se recalcula en backend al crear/editar pedidos (serializer).
+
+### Usuario
+
+- Se usa `django.contrib.auth.models.User`
+- Se usan `Group` de Django para roles de negocio.
+
+## Autenticacion y autorizacion
+
+- Endpoint de login JWT:
+  - `POST /api/token/`
+- Refresh token:
+  - `POST /api/token/refresh/`
+
+Headers esperados para endpoints protegidos:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+## Grupos y permisos
+
+La aplicacion maneja roles mediante grupos de Django.
+
+Nombres de grupos usados en codigo:
+
+- `administrador`
+- `recepcion`
+- `cocina`
+
+Implementacion actual:
+
+- `IsRecepcionista` valida grupo `recepcion`
+- `IsCocinero` valida grupo `cocina`
+- Ademas se usa `IsAdminUser` de DRF para admin/staff
+
+Notas importantes:
+
+- El endpoint `GET /usuarios/{id}/grupos/` devuelve el primer grupo del usuario.
+- Conviene asignar un solo grupo principal por usuario para evitar ambiguedad.
+- Si un usuario no tiene grupo, las vistas que dependen de grupo pueden fallar o devolver 403/500 segun el caso.
+
+## API principal
+
+Las rutas se registran en `cafeteria_be/cafeteria_be/urls.py` y en los routers de cada app.
+
+### Auth
+
+- `POST /api/token/`
+- `POST /api/token/refresh/`
+
+### Productos (`/productos/`)
+
+- `GET /productos/`
+- `POST /productos/`
+- `GET /productos/{id}/`
+- `PUT /productos/{id}/`
+- `PATCH /productos/{id}/`
+- `DELETE /productos/{id}/`
+
+Permisos actuales en codigo: `IsAdminUser | IsRecepcionista | IsCocinero`.
+
+### Pedidos (`/pedidos/`)
+
+- `GET /pedidos/`
+- `POST /pedidos/`
+- `GET /pedidos/{id}/`
+- `PUT /pedidos/{id}/`
+- `PATCH /pedidos/{id}/`
+- `DELETE /pedidos/{id}/`
+- `GET /pedidos/{id}/productos/` (accion custom)
+
+Permisos actuales:
+
+- Listar/ver/editar y ver productos del pedido:
+  - `IsAdminUser | IsRecepcionista | IsCocinero`
+- Crear/eliminar:
+  - `IsAdminUser | IsRecepcionista`
+
+### Usuarios (`/usuarios/`)
+
+- `GET /usuarios/`
+- `POST /usuarios/`
+- `GET /usuarios/{id}/`
+- `PUT /usuarios/{id}/`
+- `PATCH /usuarios/{id}/`
+- `DELETE /usuarios/{id}/`
+- `GET /usuarios/{id}/grupos/` (accion custom)
+
+Permisos actuales:
+
+- CRUD usuarios: solo `IsAdminUser`
+- `grupos`: `IsAdminUser | IsRecepcionista | IsCocinero`
+
+## Variables de entorno
+
+Se usa `APP_ENV` para separar desarrollo y produccion.
+
+- `APP_ENV=development`
+- `APP_ENV=production`
+
+### Backend (minimas recomendadas)
+
+- `APP_ENV`
+- `SECRET_KEY`
+- `JWT_SECRET`
+- `DB_NAME`
+- `DB_HOST`
+
+Opcionales/utiles:
+
+- `DB_SSL`
+- `DB_SSL_ALLOW_INVALID_CERTS`
+- `ALLOWED_HOSTS`
+- `CORS_ALLOWED_ORIGINS`
+- `CSRF_TRUSTED_ORIGINS`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
+- `ADMIN_EMAIL`
+
+### Frontend
+
+- `APP_ENV`
+- `APP_API_BASE_URL` (opcional pero recomendado en produccion)
+
+### Archivos de ejemplo
+
+- `/.env.example`
+- `/cafeteria_be/.env.example`
+- `/cafeteria_fe/.env.example`
+
+## Ejecucion local con Docker
+
+1. Copia el ejemplo de entorno raiz:
+
+```bash
+cp .env.example .env
+```
+
+2. Levanta los servicios:
 
 ```bash
 docker compose up --build
 ```
 
-Servicios:
+3. URLs locales:
+
 - Frontend: `http://localhost:5173`
 - Backend: `http://localhost:8000`
+- Admin Django: `http://localhost:8000/admin/`
 - MongoDB: `mongodb://localhost:27017`
+
+### Admin automatico en backend
+
+Al iniciar el contenedor backend:
+
+- se ejecuta `python manage.py migrate`
+- se crea/actualiza un superusuario si existen:
+  - `ADMIN_USERNAME`
+  - `ADMIN_PASSWORD`
+  - `ADMIN_EMAIL`
+
+## Ejecucion local sin Docker
+
+### Backend
+
+```bash
+cd cafeteria_be
+python -m venv .venv
+# activar entorno virtual
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+
+### Frontend
+
+```bash
+cd cafeteria_fe
+npm install
+npm run dev
+```
 
 ## Despliegue en Render
 
-Configura estas variables de entorno:
+Archivo de referencia: `render.yaml`
 
-Backend (`cafeteria_be`):
-- `APP_ENV=production`
-- `SECRET_KEY=<valor-seguro>`
-- `JWT_SECRET=<valor-seguro>`
-- `DB_NAME=<db>`
-- `DB_HOST=<mongodb-uri>`
-- `ADMIN_USERNAME=<usuario-admin>`
-- `ADMIN_PASSWORD=<password-admin>`
-- `ADMIN_EMAIL=<correo-admin>`
+Servicios definidos:
 
-Frontend (`cafeteria_fe`):
-- `APP_ENV=production`
-- Opcional: `APP_API_BASE_URL=https://<tu-backend>.onrender.com`
+- Backend web en Docker (`rootDir: cafeteria_be`)
+- Frontend estatico (`rootDir: cafeteria_fe`, `build: npm ci && npm run build`, `publish: dist`)
 
-Si no defines `APP_API_BASE_URL`, el frontend usa por defecto `https://cafeteria-be.onrender.com` en produccion.
+Recomendaciones:
 
-## Admin Django en Docker
+- Definir `APP_API_BASE_URL` del frontend con la URL publica real del backend desplegado.
+- Configurar en backend:
+  - `ALLOWED_HOSTS`
+  - `CORS_ALLOWED_ORIGINS`
+  - `CSRF_TRUSTED_ORIGINS`
+- Usar `DB_HOST` apuntando a MongoDB accesible desde Render.
 
-Al iniciar el backend en Docker, se ejecutan migraciones y se crea/actualiza automaticamente un superusuario si existen estas variables:
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`
-- `ADMIN_EMAIL`
+## Flujo funcional de la app
 
-Luego puedes entrar en `/admin/` con esas credenciales.
+1. Login con usuario y contrasena.
+2. Obtencion de JWT.
+3. Consulta de grupo del usuario (`/usuarios/{id}/grupos/`).
+4. UI habilita acciones segun rol.
+5. Gestion de pedidos y productos via API.
+
+## Estructura del repositorio
+
+```text
+cafeteria/
+├── cafeteria_be/              # Backend Django + DRF
+│   ├── cafeteria_be/          # settings, urls, wsgi, permissions
+│   ├── productos/             # modulo productos
+│   ├── pedidos/               # modulo pedidos
+│   ├── usuarios/              # modulo usuarios
+│   ├── requirements.txt
+│   └── start.sh
+├── cafeteria_fe/              # Frontend React + Vite
+│   ├── src/
+│   ├── package.json
+│   └── start.sh
+├── docker-compose.yml
+├── render.yaml
+└── README.md
+```
+
+## Problemas comunes
+
+- `401 Unauthorized`:
+  - token vencido/invalido o falta header `Authorization`
+- `403 Forbidden`:
+  - el usuario no pertenece al grupo requerido
+- Error de CORS:
+  - revisar `CORS_ALLOWED_ORIGINS` y `APP_API_BASE_URL`
+- Backend no conecta a Mongo:
+  - validar `DB_HOST`, `DB_NAME` y SSL si aplica
+
+---
+
+Si quieres, en un siguiente paso te puedo preparar tambien un `README` tecnico separado para `cafeteria_be` y otro para `cafeteria_fe`, dejando este README raiz como vista general del monorepo.
