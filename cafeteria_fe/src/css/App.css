@@ -1,0 +1,21 @@
+#root {
+    height: 1px;
+    min-height: 100vh;
+    width: 100%;
+}
+
+.container-login {
+    width: 350px;
+}
+
+nav {
+    height: 60px;
+}
+
+.list-group-item-action {
+    cursor: pointer;
+}
+
+#botonQuitar {
+    cursor: pointer;
+}
