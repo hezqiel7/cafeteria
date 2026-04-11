@@ -14,6 +14,15 @@ function Productos({
   const [listaProductos, setListaProductos] = useState(null) // Lista de productos con el filtro de busqueda
   const [mostrarDetalle, setMostrarDetalle] = useState(null)
 
+  const getNextProductoId = () => {
+    const productosActuales = productos.current || []
+    const maxId = productosActuales.reduce(
+      (maximo, producto) => Math.max(maximo, Number(producto.id) || 0),
+      0
+    )
+    return maxId + 1
+  }
+
   useEffect(() => {
     fetch(buildApiUrl('/productos/'), {
       headers: {
@@ -22,9 +31,10 @@ function Productos({
     })
       .then((response) => response.json())
       .then((data) => {
-        productos.current = data
-        setListaProductos(data)
-        setMostrarDetalle(data[0])
+        const productosCargados = Array.isArray(data) ? data : []
+        productos.current = productosCargados
+        setListaProductos(productosCargados)
+        setMostrarDetalle(productosCargados[0] || null)
       })
   }, [])
 
@@ -46,6 +56,11 @@ function Productos({
 
   const handleChangeBuscar = (e) => {
     const data = e.target.value
+    if (!productos.current) {
+      setListaProductos([])
+      return
+    }
+
     let lista_productos = productos.current.filter((p) => {
       // Normalizar para ignorar cualquier tilde
       let nombre = p.nombre
@@ -62,23 +77,23 @@ function Productos({
   }
 
   const handleClickAgregar = () => {
-    // Buscar el id mas grande actualmente
-    idMasGrande.current = listaProductos.reduce((anterior, actual) => {
-      return actual.id > anterior.id ? actual : anterior
-    }).id
+    const nextId = getNextProductoId()
+    idMasGrande.current = nextId - 1
 
     const lista = document.getElementsByClassName('list-group-item')
     for (let i = 0; i < lista.length; i++) lista[i].classList.add('disabled')
 
     setMostrarDetalle({
-      id: idMasGrande.current + 1,
+      id: nextId,
       nombre: '',
       precio: ''
     })
   }
 
   const handleClickEliminar = () => {
-    if (!idMasGrande.current) {
+    if (!mostrarDetalle) return
+
+    if (idMasGrande.current === null) {
       const id = mostrarDetalle.id
 
       fetch(buildApiUrl(`/productos/${id}/`), {
@@ -89,11 +104,12 @@ function Productos({
       })
         .then((response) => {
           if (response.ok) {
-            const arr = [...listaProductos]
+            const arr = [...(listaProductos || [])]
             const index = arr.findIndex((p) => p.id === id)
             arr.splice(index, 1)
+            productos.current = arr
             setListaProductos(arr)
-            setMostrarDetalle(listaProductos[0])
+            setMostrarDetalle(arr[0] || null)
           }
         })
         .catch((error) => console.log(error))
@@ -102,23 +118,30 @@ function Productos({
       for (let i = 0; i < lista.length; i++)
         lista[i].classList.remove('disabled')
       idMasGrande.current = null
-      setMostrarDetalle(listaProductos[0])
+      setMostrarDetalle((listaProductos && listaProductos[0]) || null)
     }
   }
 
   const handleClickGuardar = () => {
-    let id = mostrarDetalle.id
+    if (!mostrarDetalle) return
+
+    const parsedId = Number(mostrarDetalle.id)
+    const hasValidId = Number.isInteger(parsedId) && parsedId > 0
+    const isCreating = idMasGrande.current !== null || !hasValidId
+    const id = isCreating ? getNextProductoId() : parsedId
     const nombre = mostrarDetalle.nombre
-    const precio = mostrarDetalle.precio
+    const precio = parseInt(mostrarDetalle.precio)
+
+    if (!nombre || Number.isNaN(precio)) return
 
     const data = {
       id: id,
       nombre: nombre,
-      precio: parseInt(precio)
+      precio: precio
     }
 
     fetch(
-      idMasGrande.current
+      isCreating
         ? buildApiUrl('/productos/')
         : buildApiUrl(`/productos/${id}/`),
       {
@@ -126,21 +149,31 @@ function Productos({
           Authorization: 'Bearer ' + accesstoken,
           'Content-Type': 'application/json'
         },
-        method: idMasGrande.current ? 'POST' : 'PUT',
+        method: isCreating ? 'POST' : 'PUT',
         body: JSON.stringify(data)
       }
     )
-      .then((response) => {
+      .then(async (response) => {
         if (response.ok) {
-          const arr = [...listaProductos]
-          if (idMasGrande.current) {
-            arr.push(data)
-            idMasGrande.current = null
+          const arr = [...(productos.current || [])]
+          const savedData = await response.json()
+
+          if (isCreating) {
+            arr.push(savedData)
           } else {
-            let index = arr.findIndex((p) => p.id === id)
-            arr[index] = data
+            let index = arr.findIndex((p) => Number(p.id) === id)
+            if (index === -1) {
+              arr.push(savedData)
+            } else {
+              arr[index] = savedData
+            }
           }
+
+          idMasGrande.current = null
+          productos.current = arr
           setListaProductos(arr)
+          setMostrarDetalle(savedData)
+
           const lista = document.getElementsByClassName('list-group-item')
           for (let i = 0; i < lista.length; i++)
             lista[i].classList.remove('disabled')
@@ -173,7 +206,7 @@ function Productos({
                 className="form-control"
                 onChange={(e) =>
                   setMostrarDetalle({
-                    ...mostrarDetalle,
+                    ...(mostrarDetalle || {}),
                     nombre: e.target.value
                   })
                 }
@@ -190,7 +223,7 @@ function Productos({
                 type="number"
                 onChange={(e) =>
                   setMostrarDetalle({
-                    ...mostrarDetalle,
+                    ...(mostrarDetalle || {}),
                     precio: e.target.value
                   })
                 }
@@ -202,12 +235,18 @@ function Productos({
               <button
                 className="btn btn-danger w-25"
                 onClick={handleClickEliminar}
+                disabled={!mostrarDetalle}
               >
                 <i className="fa-solid fa-trash-can fa-lg"></i>
               </button>
               <button
                 className="btn btn-success w-25"
                 onClick={handleClickGuardar}
+                disabled={
+                  !mostrarDetalle ||
+                  !mostrarDetalle.nombre ||
+                  mostrarDetalle.precio === ''
+                }
               >
                 <i className="fa-solid fa-floppy-disk fa-lg"></i>
               </button>
