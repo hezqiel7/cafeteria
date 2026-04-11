@@ -31,7 +31,6 @@ services:
   - type: web
     name: cafeteria-frontend
     env: static
-    plan: free
     rootDir: cafeteria_fe
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
