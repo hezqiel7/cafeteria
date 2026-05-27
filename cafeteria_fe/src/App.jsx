@@ -5,6 +5,7 @@ import Login from './Login'
 import Pedidos from './Pedidos'
 import Productos from './Productos'
 import Usuarios from './Usuarios'
+import FidelizacionApp from './FidelizacionApp'
 import jwt_decode from 'jwt-decode'
 import { buildApiUrl } from './config'
 
@@ -63,6 +64,7 @@ function App() {
         {actualtab === 'productos' && (
           <Productos accesstoken={accesstoken} editable={true} />
         )}
+        {actualtab === 'fidelizacion' && <FidelizacionApp />}
       </>
     )
   }
