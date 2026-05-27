@@ -57,6 +57,17 @@ function Navbar({
               <li className="nav-item">
                 <a
                   className="nav-link"
+                  onClick={() => setActualTab('fidelizacion')}
+                  href="#"
+                >
+                  Fidelizacion
+                </a>
+              </li>
+            )}
+            {grupo && grupo === 'administrador' && (
+              <li className="nav-item">
+                <a
+                  className="nav-link"
                   onClick={() => setActualTab('usuarios')}
                   href={ADMIN_URL}
                 >
