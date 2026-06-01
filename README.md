@@ -20,6 +20,7 @@ El proyecto esta dividido en dos apps:
 - [Ejecucion local sin Docker](#ejecucion-local-sin-docker)
 - [Despliegue en Render](#despliegue-en-render)
 - [Flujo funcional de la app](#flujo-funcional-de-la-app)
+- [Modulo de fidelizacion](#modulo-de-fidelizacion)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Problemas comunes](#problemas-comunes)
 
@@ -289,7 +290,43 @@ Recomendaciones:
 6. El administrador puede acceder al modulo `Fidelizacion` del segundo parcial.
 7. Fidelizacion opera solo en frontend con datos de ejemplo persistidos en `localStorage`.
 
-### Modulo de fidelizacion
+## Modulo de fidelizacion
+
+El segundo parcial se resolvio con un modulo frontend independiente dentro de `cafeteria_fe`.
+No agrega modelos ni endpoints nuevos en Django, porque la consigna del punto 5 permite resolver solo las interfaces.
+
+### Objetivo
+
+- Cubrir todas las pantallas pedidas para el sistema de fidelizacion de clientes.
+- Mantener el proyecto actual de cafeteria funcionando sin romper backend ni login existentes.
+- Permitir una demo funcional con datos de ejemplo y persistencia local.
+
+### Ubicacion del codigo
+
+- Entrada principal: `cafeteria_fe/src/FidelizacionApp.jsx`
+- Modulos: `cafeteria_fe/src/fidelizacion/`
+- Persistencia local: `cafeteria_fe/src/fidelizacion/storage.js`
+- Datos iniciales: `cafeteria_fe/src/fidelizacion/mockData.js`
+- Reglas y procesos: `cafeteria_fe/src/fidelizacion/utils.js`
+
+### Como se accede
+
+1. Iniciar sesion en la app con un usuario administrador.
+2. Abrir la pestaña `Fidelizacion` desde la navbar.
+3. Navegar entre las secciones del modulo.
+
+Usuario recomendado para demo:
+
+- `admin / admin`
+
+### Persistencia y alcance tecnico
+
+- Los datos de fidelizacion se guardan en `localStorage` del navegador.
+- Existe un boton para restablecer los datos de ejemplo.
+- Las operaciones del modulo no dependen del backend actual.
+- El modulo queda disponible para demostrar el parcial aun sin desarrollar APIs nuevas.
+
+### Cobertura exacta de la consigna
 
 - CRUD de clientes.
 - CRUD de conceptos de uso de puntos.
@@ -300,6 +337,26 @@ Recomendaciones:
 - Servicios simulados de carga, uso y equivalencia.
 - Consultas por cliente, concepto, fecha, rango y proximidad de vencimiento.
 - Proceso planificado manual para vencer bolsas.
+
+### Flujo funcional del modulo
+
+1. Se administran clientes, conceptos, reglas y vencimientos desde ABMs simples.
+2. El servicio `cargar puntos` calcula la equivalencia segun la regla aplicable y crea una nueva bolsa.
+3. El servicio `usar puntos` descuenta saldo por FIFO y genera cabecera mas detalle del uso.
+4. La vista de `Bolsa` muestra saldo, asignacion, caducidad y estado.
+5. La vista de `Uso de puntos` muestra el historial y el detalle de bolsas consumidas.
+6. `Consultas` permite filtrar los reportes principales pedidos por el profesor.
+7. `Proceso planificado` simula la ejecucion periodica que vence bolsas expiradas.
+
+### Que se puede demostrar rapidamente
+
+1. Alta de un cliente.
+2. Alta o ajuste de una regla de puntos.
+3. Carga de puntos para un cliente con un monto de operacion.
+4. Uso de puntos con descuento FIFO.
+5. Visualizacion de la bolsa generada y del historial de uso.
+6. Consulta de puntos a vencer.
+7. Ejecucion manual del proceso planificado.
 
 ## Estructura del repositorio
 

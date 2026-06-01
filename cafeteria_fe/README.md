@@ -3,11 +3,59 @@
 ## Descripción
 El frontend de la aplicación de cafetería es una interfaz de usuario desarrollada en React que permite a los trabajadores de la cafetería interactuar con el sistema. Proporciona funcionalidades según los roles definidos: recepcionistas, cocineros y administradores. Se conecta al backend mediante una API REST para gestionar productos, pedidos y usuarios.
 
+Además incluye un modulo nuevo de fidelizacion de clientes desarrollado para el segundo parcial, resuelto completamente del lado frontend.
+
 ## Características principales
 - **Recepcionista**: Puede añadir nuevos pedidos al sistema.
 - **Cocineros**: Visualizan los pedidos, marcan pedidos como listos para entregar o entregados.
 - **Administradores**: Gestionan productos, precios y cuentas de usuarios.
 - **Fidelización**: Incluye un modulo frontend del segundo parcial con CRUDs, consultas, servicios y proceso planificado simulado.
+
+## Modulo de fidelizacion
+
+El modulo de fidelizacion fue agregado dentro de la misma app React para cumplir el punto 5 del segundo parcial.
+
+### Alcance
+
+- No requiere backend nuevo.
+- Usa datos de ejemplo con persistencia en `localStorage`.
+- Se accede desde la pestaña `Fidelizacion` despues del login.
+- Esta pensado para demostracion funcional y defensa oral.
+
+### Secciones incluidas
+
+- Clientes
+- Conceptos
+- Reglas
+- Vencimientos
+- Bolsa de puntos
+- Uso de puntos
+- Consultas
+- Servicios
+- Proceso planificado
+
+### Operaciones simuladas
+
+- Carga de puntos segun reglas configuradas.
+- Uso de puntos con esquema FIFO.
+- Consulta de equivalencia de monto a puntos.
+- Comprobante de uso con mensaje de envio de correo simulado.
+- Vencimiento manual de bolsas desde el proceso planificado.
+
+### Archivos principales
+
+- `src/FidelizacionApp.jsx`
+- `src/fidelizacion/Clientes.jsx`
+- `src/fidelizacion/Conceptos.jsx`
+- `src/fidelizacion/Reglas.jsx`
+- `src/fidelizacion/Vencimientos.jsx`
+- `src/fidelizacion/BolsaPuntos.jsx`
+- `src/fidelizacion/UsoPuntos.jsx`
+- `src/fidelizacion/Consultas.jsx`
+- `src/fidelizacion/Servicios.jsx`
+- `src/fidelizacion/ProcesoPlanificado.jsx`
+- `src/fidelizacion/storage.js`
+- `src/fidelizacion/mockData.js`
 
 ## Live Demo
 [Frontend](https://cafeteria-fe.onrender.com/)
@@ -60,6 +108,14 @@ El frontend de la aplicación de cafetería es una interfaz de usuario desarroll
     ```
     http://localhost:5173
     ```
+
+7. Inicia sesion con:
+
+    ```text
+    admin / admin
+    ```
+
+8. Abre la pestaña `Fidelizacion` para probar el segundo parcial.
 
 ## Ejecución con Docker (Opcional)
 1. Construye la imagen de Docker:
