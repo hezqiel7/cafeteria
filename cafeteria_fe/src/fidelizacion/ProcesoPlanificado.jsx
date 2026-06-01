@@ -1,4 +1,4 @@
-import { runExpirationProcess } from './utils'
+import { getClienteNombre, runExpirationProcess } from './utils'
 
 function ProcesoPlanificado({ data, setData }) {
   const handleExecute = () => {
@@ -57,7 +57,7 @@ function ProcesoPlanificado({ data, setData }) {
                 {data.bolsas.map((bolsa) => (
                   <tr key={bolsa.id}>
                     <td>{bolsa.id}</td>
-                    <td>{bolsa.cliente_id}</td>
+                    <td>{getClienteNombre(data.clientes, bolsa.cliente_id)}</td>
                     <td>{bolsa.fecha_caducidad}</td>
                     <td>{bolsa.saldo_puntos}</td>
                     <td>{bolsa.vencido ? 'Vencido' : 'Vigente'}</td>
