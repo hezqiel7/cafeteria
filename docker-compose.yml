@@ -14,6 +14,7 @@ services:
       dockerfile: Dockerfile
     container_name: cafeteria-be
     restart: unless-stopped
+    command: sh -c "sed -i 's/\r$//' ./start.sh && sh ./start.sh"
     ports:
       - "8000:8000"
     environment:
@@ -36,6 +37,7 @@ services:
       dockerfile: Dockerfile
     container_name: cafeteria-fe
     restart: unless-stopped
+    command: sh -c "sed -i 's/\r$//' ./start.sh && sh ./start.sh"
     ports:
       - "5173:5173"
     environment:
