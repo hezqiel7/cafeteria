@@ -59,8 +59,11 @@ function Servicios({ data, setData }) {
     const concepto = data.conceptos.find(
       (item) => Number(item.id) === Number(conceptoUsoId)
     )
+    const cliente = data.clientes.find(
+      (item) => Number(item.id) === Number(clienteUsoId)
+    )
 
-    if (!clienteUsoId || !concepto) {
+    if (!clienteUsoId || !concepto || !cliente) {
       setMensaje('No se pudo registrar el uso de puntos.')
       return
     }
@@ -94,7 +97,7 @@ function Servicios({ data, setData }) {
       `Se registraron ${concepto.puntos_requeridos} puntos utilizados para ${getClienteNombre(
         data.clientes,
         clienteUsoId
-      )}.`
+      )} y se envio un comprobante simulado a ${cliente.email}.`
     )
   }
 
