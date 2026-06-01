@@ -286,6 +286,20 @@ Recomendaciones:
 3. Consulta de grupo del usuario (`/usuarios/{id}/grupos/`).
 4. UI habilita acciones segun rol.
 5. Gestion de pedidos y productos via API.
+6. El administrador puede acceder al modulo `Fidelizacion` del segundo parcial.
+7. Fidelizacion opera solo en frontend con datos de ejemplo persistidos en `localStorage`.
+
+### Modulo de fidelizacion
+
+- CRUD de clientes.
+- CRUD de conceptos de uso de puntos.
+- CRUD de reglas de asignacion.
+- CRUD de vencimientos.
+- Tabla de bolsa de puntos.
+- Historial y detalle FIFO de uso de puntos.
+- Servicios simulados de carga, uso y equivalencia.
+- Consultas por cliente, concepto, fecha, rango y proximidad de vencimiento.
+- Proceso planificado manual para vencer bolsas.
 
 ## Estructura del repositorio
 

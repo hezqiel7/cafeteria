@@ -7,6 +7,7 @@ El frontend de la aplicación de cafetería es una interfaz de usuario desarroll
 - **Recepcionista**: Puede añadir nuevos pedidos al sistema.
 - **Cocineros**: Visualizan los pedidos, marcan pedidos como listos para entregar o entregados.
 - **Administradores**: Gestionan productos, precios y cuentas de usuarios.
+- **Fidelización**: Incluye un modulo frontend del segundo parcial con CRUDs, consultas, servicios y proceso planificado simulado.
 
 ## Live Demo
 [Frontend](https://cafeteria-fe.onrender.com/)
