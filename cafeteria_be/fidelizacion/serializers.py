@@ -106,3 +106,21 @@ class VencimientoPuntosSerializer(AutoIdModelSerializer):
         return attrs
 
 
+class BolsaPuntosSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BolsaPuntos
+        fields = '__all__'
+
+
+class UsoPuntosSerializer(serializers.ModelSerializer):
+    detalle = serializers.JSONField(required=False)
+
+    class Meta:
+        model = UsoPuntos
+        fields = '__all__'
+
+
+class ProcesoFidelizacionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProcesoFidelizacion
+        fields = '__all__'
