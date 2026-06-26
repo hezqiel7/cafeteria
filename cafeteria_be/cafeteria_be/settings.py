@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "productos",
     "pedidos",
     "usuarios",
+    "fidelizacion",
     "corsheaders",
 ]
 
