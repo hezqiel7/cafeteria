@@ -3,7 +3,7 @@ from rest_framework import viewsets, status
 from rest_framework.permissions import IsAdminUser
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Group, User
 from .serializers import UsuarioSerializer, GrupoSerializer
 from cafeteria_be.permissions import IsRecepcionista, IsCocinero
 
@@ -30,8 +30,18 @@ class UsuariosViewSet(viewsets.ModelViewSet):
         id_usuario = self.kwargs['pk']
         try:
             usuario = User.objects.get(pk=id_usuario)
-            grupos = usuario.groups.all()
-            return Response(data=GrupoSerializer(grupos[0]).data, status=200)
+            if usuario.is_superuser:
+                return Response(data={'name': 'administrador'}, status=200)
+
+            relacion_grupo = User.groups.through.objects.filter(user_id=usuario.id).first()
+            if not relacion_grupo:
+                return Response(data={'name': 'sin_grupo'}, status=200)
+
+            grupo = Group.objects.filter(id=relacion_grupo.group_id).first()
+            if not grupo:
+                return Response(data={'name': 'sin_grupo'}, status=200)
+
+            return Response(data=GrupoSerializer(grupo).data, status=200)
         except Exception as e:
             print(e)
             return Response(None, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
