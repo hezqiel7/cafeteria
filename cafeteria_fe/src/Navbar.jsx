@@ -37,7 +37,7 @@ function Navbar({
               <a
                 className="nav-link"
                 onClick={() => setActualTab('pedido')}
-                href="#"
+                href="#pedido"
               >
                 Pedidos
               </a>
@@ -47,18 +47,18 @@ function Navbar({
                 <a
                   className="nav-link"
                   onClick={() => setActualTab('productos')}
-                  href="#"
+                  href="#productos"
                 >
                   Productos
                 </a>
               </li>
             )}
-            {grupo && grupo === 'administrador' && (
+            {grupo && (grupo === 'administrador' || grupo === 'recepcion') && (
               <li className="nav-item">
                 <a
                   className="nav-link"
                   onClick={() => setActualTab('fidelizacion')}
-                  href="#"
+                  href="#fidelizacion"
                 >
                   Fidelizacion
                 </a>
@@ -76,9 +76,9 @@ function Navbar({
               </li>
             )}
             <li className="nav-item">
-              <a className="nav-link" onClick={handleLogOut} href="#">
+              <button type="button" className="nav-link btn btn-link" onClick={handleLogOut}>
                 Cerrar sesión
-              </a>
+              </button>
             </li>
           </ul>
         </div>

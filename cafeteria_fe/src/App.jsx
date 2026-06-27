@@ -9,8 +9,15 @@ import FidelizacionApp from './FidelizacionApp'
 import jwt_decode from 'jwt-decode'
 import { buildApiUrl } from './config'
 
+const validTabs = ['pedido', 'productos', 'fidelizacion']
+
+const getTabFromHash = () => {
+  const hashTab = window.location.hash.replace('#', '')
+  return validTabs.includes(hashTab) ? hashTab : 'pedido'
+}
+
 function App() {
-  const [actualtab, setActualTab] = useState('pedido')
+  const [actualtab, setActualTab] = useState(getTabFromHash)
 
   let accesstokenx = localStorage.getItem('accesstoken')
   let refreshtokenx = localStorage.getItem('refreshtoken')
@@ -23,6 +30,13 @@ function App() {
   const [accesstoken, setAccesstoken] = useState(accesstokenx)
   const [refreshtoken, setRefreshtoken] = useState(refreshtokenx)
   const [grupo, setGrupo] = useState(null)
+
+  useEffect(() => {
+    const handleHashChange = () => setActualTab(getTabFromHash())
+    handleHashChange()
+    window.addEventListener('hashchange', handleHashChange)
+    return () => window.removeEventListener('hashchange', handleHashChange)
+  }, [])
 
   useEffect(() => {
     if (!accesstoken || accesstoken === 'undefined') {
@@ -64,7 +78,7 @@ function App() {
         {actualtab === 'productos' && (
           <Productos accesstoken={accesstoken} editable={true} />
         )}
-        {actualtab === 'fidelizacion' && <FidelizacionApp />}
+        {actualtab === 'fidelizacion' && <FidelizacionApp accesstoken={accesstoken} />}
       </>
     )
   }
