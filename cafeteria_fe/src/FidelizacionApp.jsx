@@ -9,10 +9,16 @@ import Consultas from './fidelizacion/Consultas'
 import Servicios from './fidelizacion/Servicios'
 import ProcesoPlanificado from './fidelizacion/ProcesoPlanificado'
 import {
-  loadFidelizacionData,
-  resetFidelizacionData,
-  saveFidelizacionData
-} from './fidelizacion/storage'
+  cargarPuntos,
+  consultarEquivalencia,
+  consultarFidelizacion,
+  createFidelizacionItem,
+  deleteFidelizacionItem,
+  ejecutarVencimientos,
+  getFidelizacionResumen,
+  updateFidelizacionItem,
+  usarPuntos
+} from './fidelizacion/api'
 
 const tabs = [
   { id: 'clientes', label: 'Clientes' },
@@ -26,13 +32,53 @@ const tabs = [
   { id: 'proceso', label: 'Proceso planificado' }
 ]
 
-function FidelizacionApp() {
+const emptyData = {
+  clientes: [],
+  conceptos: [],
+  reglas: [],
+  vencimientos: [],
+  bolsas: [],
+  usos: [],
+  procesos: {
+    ultima_ejecucion: null,
+    proxima_ejecucion: null,
+    bolsas_vencidas: 0
+  }
+}
+
+const sectionResources = {
+  clientes: 'clientes',
+  conceptos: 'conceptos',
+  reglas: 'reglas',
+  vencimientos: 'vencimientos'
+}
+
+function FidelizacionApp({ accesstoken }) {
   const [activeTab, setActiveTab] = useState('clientes')
-  const [data, setData] = useState(() => loadFidelizacionData())
+  const [data, setData] = useState(emptyData)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
   useEffect(() => {
-    saveFidelizacionData(data)
-  }, [data])
+    refreshData()
+  }, [accesstoken])
+
+  const refreshData = async () => {
+    if (!accesstoken) {
+      return
+    }
+
+    try {
+      setError('')
+      setLoading(true)
+      const resumen = await getFidelizacionResumen(accesstoken)
+      setData({ ...emptyData, ...resumen })
+    } catch (requestError) {
+      setError(requestError.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const updateSection = (section, value) => {
     setData((previousData) => ({
@@ -41,9 +87,66 @@ function FidelizacionApp() {
     }))
   }
 
-  const handleReset = () => {
-    setData(resetFidelizacionData())
-    setActiveTab('clientes')
+  const syncSection = async (section, nextItems) => {
+    const resource = sectionResources[section]
+    const previousItems = data[section] || []
+    updateSection(section, nextItems)
+
+    try {
+      setError('')
+      const previousIds = previousItems.map((item) => Number(item.id))
+      const nextIds = nextItems.map((item) => Number(item.id))
+      const deletedItems = previousItems.filter((item) => !nextIds.includes(Number(item.id)))
+      const createdItems = nextItems.filter((item) => !previousIds.includes(Number(item.id)))
+      const updatedItems = nextItems.filter((item) => {
+        const previousItem = previousItems.find((previous) => Number(previous.id) === Number(item.id))
+        return previousItem && JSON.stringify(previousItem) !== JSON.stringify(item)
+      })
+
+      for (const item of deletedItems) {
+        await deleteFidelizacionItem(accesstoken, resource, item.id)
+      }
+
+      for (const item of createdItems) {
+        await createFidelizacionItem(accesstoken, resource, item)
+      }
+
+      for (const item of updatedItems) {
+        await updateFidelizacionItem(accesstoken, resource, item)
+      }
+
+      await refreshData()
+    } catch (requestError) {
+      setError(requestError.message)
+      await refreshData()
+    }
+  }
+
+  const handleCargarPuntos = async (payload) => {
+    const response = await cargarPuntos(accesstoken, payload)
+    setData({ ...emptyData, ...response.resumen })
+    return response
+  }
+
+  const handleUsarPuntos = async (payload) => {
+    const response = await usarPuntos(accesstoken, payload)
+    setData({ ...emptyData, ...response.resumen })
+    return response
+  }
+
+  const handleConsultarEquivalencia = async (monto) => {
+    return consultarEquivalencia(accesstoken, monto)
+  }
+
+  const handleConsultar = async (tipo, valor) => {
+    const response = await consultarFidelizacion(accesstoken, tipo, valor)
+    return response.rows || []
+  }
+
+  const handleEjecutarProceso = async () => {
+    const response = await ejecutarVencimientos(accesstoken)
+    setData({ ...emptyData, ...response.resumen })
+    return response
   }
 
   const renderActiveTab = () => {
@@ -52,28 +155,28 @@ function FidelizacionApp() {
         return (
           <Clientes
             clientes={data.clientes}
-            setClientes={(clientes) => updateSection('clientes', clientes)}
+            setClientes={(clientes) => syncSection('clientes', clientes)}
           />
         )
       case 'conceptos':
         return (
           <Conceptos
             conceptos={data.conceptos}
-            setConceptos={(conceptos) => updateSection('conceptos', conceptos)}
+            setConceptos={(conceptos) => syncSection('conceptos', conceptos)}
           />
         )
       case 'reglas':
         return (
           <Reglas
             reglas={data.reglas}
-            setReglas={(reglas) => updateSection('reglas', reglas)}
+            setReglas={(reglas) => syncSection('reglas', reglas)}
           />
         )
       case 'vencimientos':
         return (
           <Vencimientos
             vencimientos={data.vencimientos}
-            setVencimientos={(vencimientos) => updateSection('vencimientos', vencimientos)}
+            setVencimientos={(vencimientos) => syncSection('vencimientos', vencimientos)}
           />
         )
       case 'bolsa':
@@ -88,11 +191,18 @@ function FidelizacionApp() {
           />
         )
       case 'consultas':
-        return <Consultas data={data} />
+        return <Consultas data={data} onConsultar={handleConsultar} />
       case 'servicios':
-        return <Servicios data={data} setData={setData} />
+        return (
+          <Servicios
+            data={data}
+            onCargarPuntos={handleCargarPuntos}
+            onUsarPuntos={handleUsarPuntos}
+            onConsultarEquivalencia={handleConsultarEquivalencia}
+          />
+        )
       case 'proceso':
-        return <ProcesoPlanificado data={data} setData={setData} />
+        return <ProcesoPlanificado data={data} onEjecutarProceso={handleEjecutarProceso} />
       default:
         return null
     }
@@ -104,13 +214,16 @@ function FidelizacionApp() {
         <div>
           <h2 className="h4 mb-1">Sistema de Fidelizacion de Clientes</h2>
           <p className="text-secondary mb-0">
-            Modulo frontend del segundo parcial con datos simulados y persistencia local.
+            Gestion de clientes, reglas, puntos, usos y vencimientos.
           </p>
         </div>
-        <button className="btn btn-outline-secondary" onClick={handleReset}>
-          Restablecer datos de ejemplo
+        <button className="btn btn-outline-secondary" onClick={refreshData}>
+          Actualizar datos
         </button>
       </div>
+
+      {error && <div className="alert alert-danger">{error}</div>}
+      {loading && <div className="alert alert-info">Cargando datos de fidelizacion...</div>}
 
       <div className="row g-3">
         <div className="col-12 col-xl-3">
