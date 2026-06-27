@@ -1,8 +1,24 @@
-import { getClienteNombre, runExpirationProcess } from './utils'
+import { useState } from 'react'
+import { getClienteNombre } from './utils'
 
-function ProcesoPlanificado({ data, setData }) {
-  const handleExecute = () => {
-    setData((previousData) => runExpirationProcess(previousData, new Date()))
+function ProcesoPlanificado({ data, onEjecutarProceso }) {
+  const [mensaje, setMensaje] = useState('')
+
+  const formatDateTime = (value) => {
+    if (!value) {
+      return 'Sin ejecucion'
+    }
+    return new Date(value).toLocaleString('es-ES')
+  }
+
+  const handleExecute = async () => {
+    try {
+      const response = await onEjecutarProceso()
+      const vencidas = response.proceso?.bolsas_vencidas || 0
+      setMensaje(`Proceso ejecutado. Bolsas vencidas detectadas: ${vencidas}.`)
+    } catch (error) {
+      setMensaje(error.message)
+    }
   }
 
   return (
@@ -11,19 +27,19 @@ function ProcesoPlanificado({ data, setData }) {
         <div className="card-body">
           <h3 className="h5 mb-3">Proceso planificado cada X horas</h3>
           <p className="text-secondary">
-            Esta simulacion actualiza las bolsas con puntos vencidos y deja registro de la ultima ejecucion.
+            Actualiza las bolsas con puntos vencidos y deja registro de la ultima ejecucion.
           </p>
           <div className="row g-3 mb-3">
             <div className="col-12 col-md-4">
               <div className="border rounded p-3 h-100">
                 <div className="small text-secondary">Ultima ejecucion</div>
-                <div>{new Date(data.procesos.ultima_ejecucion).toLocaleString('es-ES')}</div>
+                <div>{formatDateTime(data.procesos.ultima_ejecucion)}</div>
               </div>
             </div>
             <div className="col-12 col-md-4">
               <div className="border rounded p-3 h-100">
                 <div className="small text-secondary">Proxima ejecucion</div>
-                <div>{new Date(data.procesos.proxima_ejecucion).toLocaleString('es-ES')}</div>
+                <div>{formatDateTime(data.procesos.proxima_ejecucion)}</div>
               </div>
             </div>
             <div className="col-12 col-md-4">
@@ -36,6 +52,7 @@ function ProcesoPlanificado({ data, setData }) {
           <button className="btn btn-primary" onClick={handleExecute}>
             Ejecutar ahora
           </button>
+          {mensaje && <div className="alert alert-secondary mt-3 mb-0">{mensaje}</div>}
         </div>
       </div>
 

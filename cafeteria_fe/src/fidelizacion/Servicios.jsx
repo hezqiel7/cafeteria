@@ -1,20 +1,13 @@
 import { useMemo, useState } from 'react'
-import {
-  addDays,
-  calculateEquivalencia,
-  consumePuntosFIFO,
-  getClienteNombre,
-  getClienteSaldo,
-  getDuracionVigente,
-  getNextId
-} from './utils'
+import { getClienteNombre, getClienteSaldo } from './utils'
 
-function Servicios({ data, setData }) {
+function Servicios({ data, onCargarPuntos, onUsarPuntos, onConsultarEquivalencia }) {
   const [clienteCargaId, setClienteCargaId] = useState(data.clientes[0]?.id || '')
   const [montoCarga, setMontoCarga] = useState('')
   const [clienteUsoId, setClienteUsoId] = useState(data.clientes[0]?.id || '')
   const [conceptoUsoId, setConceptoUsoId] = useState(data.conceptos[0]?.id || '')
   const [montoConsulta, setMontoConsulta] = useState('')
+  const [puntosEquivalentes, setPuntosEquivalentes] = useState(0)
   const [mensaje, setMensaje] = useState('')
 
   const saldoCliente = useMemo(
@@ -22,40 +15,30 @@ function Servicios({ data, setData }) {
     [data.bolsas, clienteUsoId]
   )
 
-  const handleCargarPuntos = () => {
+  const handleCargarPuntos = async () => {
     const monto = Number(montoCarga)
-    const puntos = calculateEquivalencia(data.reglas, monto)
 
-    if (!clienteCargaId || !monto || puntos <= 0) {
+    if (!clienteCargaId || !monto) {
       setMensaje('No se pudo generar la carga de puntos con los datos ingresados.')
       return
     }
 
-    const fechaAsignacion = new Date().toISOString().slice(0, 10)
-    const diasDuracion = getDuracionVigente(data.vencimientos, fechaAsignacion)
-    const nuevaBolsa = {
-      id: getNextId(data.bolsas),
-      cliente_id: Number(clienteCargaId),
-      fecha_asignacion: fechaAsignacion,
-      fecha_caducidad: addDays(fechaAsignacion, diasDuracion),
-      puntaje_asignado: puntos,
-      puntaje_utilizado: 0,
-      saldo_puntos: puntos,
-      monto_operacion: monto,
-      vencido: false
+    try {
+      const response = await onCargarPuntos({
+        cliente_id: Number(clienteCargaId),
+        monto_operacion: monto
+      })
+      const puntos = response.bolsa?.puntaje_asignado || 0
+      setMontoCarga('')
+      setMensaje(
+        `Se cargaron ${puntos} puntos para ${getClienteNombre(data.clientes, clienteCargaId)}.`
+      )
+    } catch (error) {
+      setMensaje(error.message)
     }
-
-    setData((previousData) => ({
-      ...previousData,
-      bolsas: [...previousData.bolsas, nuevaBolsa]
-    }))
-    setMontoCarga('')
-    setMensaje(
-      `Se cargaron ${puntos} puntos para ${getClienteNombre(data.clientes, clienteCargaId)}.`
-    )
   }
 
-  const handleUsarPuntos = () => {
+  const handleUsarPuntos = async () => {
     const concepto = data.conceptos.find(
       (item) => Number(item.id) === Number(conceptoUsoId)
     )
@@ -68,42 +51,30 @@ function Servicios({ data, setData }) {
       return
     }
 
-    const consumo = consumePuntosFIFO(
-      data.bolsas,
-      Number(clienteUsoId),
-      Number(concepto.puntos_requeridos)
-    )
-
-    if (!consumo.success) {
-      setMensaje('El cliente no tiene saldo suficiente para utilizar ese concepto.')
-      return
+    try {
+      await onUsarPuntos({
+        cliente_id: Number(clienteUsoId),
+        concepto_id: Number(conceptoUsoId)
+      })
+      setMensaje(
+        `Se registraron ${concepto.puntos_requeridos} puntos utilizados para ${getClienteNombre(
+          data.clientes,
+          clienteUsoId
+        )} y se genero el comprobante para ${cliente.email}.`
+      )
+    } catch (error) {
+      setMensaje(error.message)
     }
-
-    const nuevoUso = {
-      id: getNextId(data.usos),
-      cliente_id: Number(clienteUsoId),
-      concepto_id: Number(conceptoUsoId),
-      puntaje_utilizado: Number(concepto.puntos_requeridos),
-      fecha: new Date().toISOString().slice(0, 10),
-      detalle: consumo.detalle
-    }
-
-    setData((previousData) => ({
-      ...previousData,
-      bolsas: consumo.bolsas,
-      usos: [...previousData.usos, nuevoUso]
-    }))
-    setMensaje(
-      `Se registraron ${concepto.puntos_requeridos} puntos utilizados para ${getClienteNombre(
-        data.clientes,
-        clienteUsoId
-      )} y se envio un comprobante simulado a ${cliente.email}.`
-    )
   }
 
-  const puntosEquivalentes = montoConsulta
-    ? calculateEquivalencia(data.reglas, Number(montoConsulta))
-    : 0
+  const handleConsultarEquivalencia = async () => {
+    try {
+      const response = await onConsultarEquivalencia(Number(montoConsulta))
+      setPuntosEquivalentes(response.puntos || 0)
+    } catch (error) {
+      setMensaje(error.message)
+    }
+  }
 
   return (
     <div className="d-flex flex-column gap-3">
@@ -136,8 +107,8 @@ function Servicios({ data, setData }) {
               />
             </div>
             <div className="col-12 col-md-3 d-grid align-items-end">
-              <button className="btn btn-success" onClick={handleCargarPuntos}>
-                Simular carga
+              <button className="btn btn-success" onClick={handleCargarPuntos} disabled={!data.clientes.length}>
+                Cargar puntos
               </button>
             </div>
           </div>
@@ -178,8 +149,8 @@ function Servicios({ data, setData }) {
               </select>
             </div>
             <div className="col-12 col-md-3 d-grid align-items-end">
-              <button className="btn btn-primary" onClick={handleUsarPuntos}>
-                Simular uso FIFO
+              <button className="btn btn-primary" onClick={handleUsarPuntos} disabled={!data.clientes.length || !data.conceptos.length}>
+                Usar puntos FIFO
               </button>
             </div>
           </div>
@@ -200,7 +171,12 @@ function Servicios({ data, setData }) {
                 onChange={(event) => setMontoConsulta(event.target.value)}
               />
             </div>
-            <div className="col-12 col-md-8">
+            <div className="col-12 col-md-3 d-grid">
+              <button className="btn btn-outline-primary" onClick={handleConsultarEquivalencia}>
+                Consultar
+              </button>
+            </div>
+            <div className="col-12 col-md-5">
               <div className="alert alert-info mb-0">
                 El monto ingresado equivale a <strong>{puntosEquivalentes}</strong> puntos.
               </div>
