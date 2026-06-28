@@ -292,27 +292,27 @@ Recomendaciones:
 
 ## Modulo de fidelizacion
 
-El segundo parcial se resolvio con un modulo frontend independiente dentro de `cafeteria_fe`.
-No agrega modelos ni endpoints nuevos en Django, porque la consigna del punto 5 permite resolver solo las interfaces.
+El sistema de fidelizacion esta integrado entre el backend Django y el frontend React.
+Permite administrar clientes, reglas, puntos, usos y vencimientos con datos persistidos en MongoDB.
 
 ### Objetivo
 
-- Cubrir todas las pantallas pedidas para el sistema de fidelizacion de clientes.
-- Mantener el proyecto actual de cafeteria funcionando sin romper backend ni login existentes.
-- Permitir una demo funcional con datos de ejemplo y persistencia local.
+  - Administrar el ciclo completo de fidelizacion de clientes.
+  - Mantener el proyecto actual de cafeteria funcionando con login y roles existentes.
+  - Permitir una ejecucion directa con datos de ejemplo cargados desde el backend.
 
 ### Ubicacion del codigo
 
 - Entrada principal: `cafeteria_fe/src/FidelizacionApp.jsx`
 - Modulos: `cafeteria_fe/src/fidelizacion/`
-- Persistencia local: `cafeteria_fe/src/fidelizacion/storage.js`
-- Datos iniciales: `cafeteria_fe/src/fidelizacion/mockData.js`
-- Reglas y procesos: `cafeteria_fe/src/fidelizacion/utils.js`
+- API frontend: `cafeteria_fe/src/fidelizacion/api.js`
+- Backend: `cafeteria_be/fidelizacion/`
+- Seed inicial: `cafeteria_be/fidelizacion/management/commands/seed_fidelizacion.py`
 
 ### Como se accede
 
 1. Iniciar sesion en la app con un usuario administrador.
-2. Abrir la pestaña `Fidelizacion` desde la navbar.
+2. Abrir la pesta??a `Fidelizacion` desde la navbar.
 3. Navegar entre las secciones del modulo.
 
 Usuario recomendado para demo:
@@ -362,20 +362,20 @@ Usuario recomendado para demo:
 
 ```text
 cafeteria/
-├── cafeteria_be/              # Backend Django + DRF
-│   ├── cafeteria_be/          # settings, urls, wsgi, permissions
-│   ├── productos/             # modulo productos
-│   ├── pedidos/               # modulo pedidos
-│   ├── usuarios/              # modulo usuarios
-│   ├── requirements.txt
-│   └── start.sh
-├── cafeteria_fe/              # Frontend React + Vite
-│   ├── src/
-│   ├── package.json
-│   └── start.sh
-├── docker-compose.yml
-├── render.yaml
-└── README.md
+????????? cafeteria_be/              # Backend Django + DRF
+???   ????????? cafeteria_be/          # settings, urls, wsgi, permissions
+???   ????????? productos/             # modulo productos
+???   ????????? pedidos/               # modulo pedidos
+???   ????????? usuarios/              # modulo usuarios
+???   ????????? requirements.txt
+???   ????????? start.sh
+????????? cafeteria_fe/              # Frontend React + Vite
+???   ????????? src/
+???   ????????? package.json
+???   ????????? start.sh
+????????? docker-compose.yml
+????????? render.yaml
+????????? README.md
 ```
 
 ## Problemas comunes
