@@ -287,8 +287,8 @@ Recomendaciones:
 3. Consulta de grupo del usuario (`/usuarios/{id}/grupos/`).
 4. UI habilita acciones segun rol.
 5. Gestion de pedidos y productos via API.
-6. El administrador puede acceder al modulo `Fidelizacion` del segundo parcial.
-7. Fidelizacion opera solo en frontend con datos de ejemplo persistidos en `localStorage`.
+6. Administradores y recepcionistas pueden acceder al modulo `Fidelizacion`.
+7. Fidelizacion opera contra el backend y mantiene datos persistidos en MongoDB.
 
 ## Modulo de fidelizacion
 
@@ -297,9 +297,9 @@ Permite administrar clientes, reglas, puntos, usos y vencimientos con datos pers
 
 ### Objetivo
 
-  - Administrar el ciclo completo de fidelizacion de clientes.
-  - Mantener el proyecto actual de cafeteria funcionando con login y roles existentes.
-  - Permitir una ejecucion directa con datos de ejemplo cargados desde el backend.
+- Administrar el ciclo completo de fidelizacion de clientes.
+- Mantener el proyecto actual de cafeteria funcionando con login y roles existentes.
+- Permitir una ejecucion directa con datos de ejemplo cargados desde el backend.
 
 ### Ubicacion del codigo
 
@@ -311,20 +311,21 @@ Permite administrar clientes, reglas, puntos, usos y vencimientos con datos pers
 
 ### Como se accede
 
-1. Iniciar sesion en la app con un usuario administrador.
-2. Abrir la pesta??a `Fidelizacion` desde la navbar.
+1. Iniciar sesion en la app con un usuario administrador o recepcionista.
+2. Abrir la pesta?a `Fidelizacion` desde la navbar.
 3. Navegar entre las secciones del modulo.
 
 Usuario recomendado para demo:
 
 - `admin / admin`
+- `recepcion / recepcion`
 
 ### Persistencia y alcance tecnico
 
-- Los datos de fidelizacion se guardan en `localStorage` del navegador.
-- Existe un boton para restablecer los datos de ejemplo.
-- Las operaciones del modulo no dependen del backend actual.
-- El modulo queda disponible para demostrar el parcial aun sin desarrollar APIs nuevas.
+- Los datos de fidelizacion se guardan en MongoDB desde el backend.
+- Al iniciar Docker se cargan datos de ejemplo si todavia no existen.
+- Las operaciones se exponen mediante endpoints protegidos con JWT.
+- El modulo permite acceso completo a usuarios administradores y recepcionistas.
 
 ### Cobertura exacta de la consigna
 
@@ -334,9 +335,9 @@ Usuario recomendado para demo:
 - CRUD de vencimientos.
 - Tabla de bolsa de puntos.
 - Historial y detalle FIFO de uso de puntos.
-- Servicios simulados de carga, uso y equivalencia.
+- Servicios de carga, uso y equivalencia.
 - Consultas por cliente, concepto, fecha, rango y proximidad de vencimiento.
-- Proceso planificado manual para vencer bolsas.
+- Proceso de vencimiento manual para actualizar bolsas vencidas.
 
 ### Flujo funcional del modulo
 
@@ -346,7 +347,7 @@ Usuario recomendado para demo:
 4. La vista de `Bolsa` muestra saldo, asignacion, caducidad y estado.
 5. La vista de `Uso de puntos` muestra el historial y el detalle de bolsas consumidas.
 6. `Consultas` permite filtrar los reportes principales pedidos por el profesor.
-7. `Proceso planificado` simula la ejecucion periodica que vence bolsas expiradas.
+7. `Proceso planificado` ejecuta la actualizacion de bolsas expiradas.
 
 ### Que se puede demostrar rapidamente
 
@@ -362,20 +363,20 @@ Usuario recomendado para demo:
 
 ```text
 cafeteria/
-????????? cafeteria_be/              # Backend Django + DRF
-???   ????????? cafeteria_be/          # settings, urls, wsgi, permissions
-???   ????????? productos/             # modulo productos
-???   ????????? pedidos/               # modulo pedidos
-???   ????????? usuarios/              # modulo usuarios
-???   ????????? requirements.txt
-???   ????????? start.sh
-????????? cafeteria_fe/              # Frontend React + Vite
-???   ????????? src/
-???   ????????? package.json
-???   ????????? start.sh
-????????? docker-compose.yml
-????????? render.yaml
-????????? README.md
+??? cafeteria_be/              # Backend Django + DRF
+?   ??? cafeteria_be/          # settings, urls, wsgi, permissions
+?   ??? productos/             # modulo productos
+?   ??? pedidos/               # modulo pedidos
+?   ??? usuarios/              # modulo usuarios
+?   ??? requirements.txt
+?   ??? start.sh
+??? cafeteria_fe/              # Frontend React + Vite
+?   ??? src/
+?   ??? package.json
+?   ??? start.sh
+??? docker-compose.yml
+??? render.yaml
+??? README.md
 ```
 
 ## Problemas comunes
