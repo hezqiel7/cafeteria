@@ -37,7 +37,7 @@ services:
       dockerfile: Dockerfile
     container_name: cafeteria-fe
     restart: unless-stopped
-    command: sh -c "sed -i 's/\r$//' ./start.sh && sh ./start.sh"
+    command: sh -c "tr -d '\\r' < ./start.sh > /tmp/frontend-start.sh && sh /tmp/frontend-start.sh"
     ports:
       - "5173:5173"
     environment:
