@@ -3,24 +3,24 @@
 ## Descripción
 El frontend de la aplicación de cafetería es una interfaz de usuario desarrollada en React que permite a los trabajadores de la cafetería interactuar con el sistema. Proporciona funcionalidades según los roles definidos: recepcionistas, cocineros y administradores. Se conecta al backend mediante una API REST para gestionar productos, pedidos y usuarios.
 
-Además incluye un modulo nuevo de fidelizacion de clientes desarrollado para el segundo parcial, resuelto completamente del lado frontend.
+Además incluye un modulo de fidelizacion de clientes conectado al backend del sistema.
 
 ## Características principales
 - **Recepcionista**: Puede añadir nuevos pedidos al sistema.
 - **Cocineros**: Visualizan los pedidos, marcan pedidos como listos para entregar o entregados.
 - **Administradores**: Gestionan productos, precios y cuentas de usuarios.
-- **Fidelización**: Incluye un modulo frontend del segundo parcial con CRUDs, consultas, servicios y proceso planificado simulado.
+- **Fidelización**: Incluye CRUDs, consultas, servicios de puntos y proceso de vencimientos.
 
 ## Modulo de fidelizacion
 
-El modulo de fidelizacion fue agregado dentro de la misma app React para cumplir el punto 5 del segundo parcial.
+El modulo de fidelizacion forma parte de la app React y consume los endpoints del backend Django.
 
 ### Alcance
 
-- No requiere backend nuevo.
-- Usa datos de ejemplo con persistencia en `localStorage`.
+- Usa datos persistidos en MongoDB mediante el backend.
 - Se accede desde la pestaña `Fidelizacion` despues del login.
-- Esta pensado para demostracion funcional y defensa oral.
+- Esta disponible para administradores y recepcionistas.
+- Al levantar Docker, el backend deja datos de ejemplo listos para operar.
 
 ### Secciones incluidas
 
@@ -34,12 +34,12 @@ El modulo de fidelizacion fue agregado dentro de la misma app React para cumplir
 - Servicios
 - Proceso planificado
 
-### Operaciones simuladas
+### Operaciones principales
 
 - Carga de puntos segun reglas configuradas.
 - Uso de puntos con esquema FIFO.
 - Consulta de equivalencia de monto a puntos.
-- Comprobante de uso con mensaje de envio de correo simulado.
+- Registro de uso con detalle de bolsas consumidas.
 - Vencimiento manual de bolsas desde el proceso planificado.
 
 ### Archivos principales
@@ -54,8 +54,7 @@ El modulo de fidelizacion fue agregado dentro de la misma app React para cumplir
 - `src/fidelizacion/Consultas.jsx`
 - `src/fidelizacion/Servicios.jsx`
 - `src/fidelizacion/ProcesoPlanificado.jsx`
-- `src/fidelizacion/storage.js`
-- `src/fidelizacion/mockData.js`
+- `src/fidelizacion/api.js`
 
 ## Live Demo
 [Frontend](https://cafeteria-fe.onrender.com/)
@@ -115,7 +114,7 @@ El modulo de fidelizacion fue agregado dentro de la misma app React para cumplir
     admin / admin
     ```
 
-8. Abre la pestaña `Fidelizacion` para probar el segundo parcial.
+8. Abre la pestaña `Fidelizacion` para operar el modulo.
 
 ## Ejecución con Docker (Opcional)
 1. Construye la imagen de Docker:
