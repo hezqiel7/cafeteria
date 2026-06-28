@@ -1,245 +1,163 @@
 # Cafeteria - Full Stack (Backend + Frontend)
 
-Aplicacion web para gestion de una cafeteria.
+Aplicacion web para gestion de una cafeteria con modulo de fidelizacion de clientes.
 
 El proyecto esta dividido en dos apps:
 
 - `cafeteria_be`: API REST con Django + Django REST Framework + MongoDB (djongo)
-- `cafeteria_fe`: cliente web con React + Vite
+- `cafeteria_fe`: cliente web con React + Vite + Bootstrap
 
 ## Contenido
 
 - [Arquitectura general](#arquitectura-general)
 - [Stack y componentes](#stack-y-componentes)
-- [Modelo de datos](#modelo-de-datos)
+- [Requisitos previos](#requisitos-previos)
+- [Ejecucion local con Docker](#ejecucion-local-con-docker)
+- [Ejecucion local sin Docker](#ejecucion-local-sin-docker)
+- [Variables de entorno](#variables-de-entorno)
+- [Usuarios demo](#usuarios-demo)
 - [Autenticacion y autorizacion](#autenticacion-y-autorizacion)
 - [Grupos y permisos](#grupos-y-permisos)
 - [API principal](#api-principal)
-- [Variables de entorno](#variables-de-entorno)
-- [Ejecucion local con Docker](#ejecucion-local-con-docker)
-- [Ejecucion local sin Docker](#ejecucion-local-sin-docker)
-- [Despliegue en Render](#despliegue-en-render)
-- [Flujo funcional de la app](#flujo-funcional-de-la-app)
 - [Modulo de fidelizacion](#modulo-de-fidelizacion)
+- [Despliegue en Render](#despliegue-en-render)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Problemas comunes](#problemas-comunes)
 
 ## Arquitectura general
 
-1. El usuario inicia sesion en el frontend (`/api/token/`).
-2. El backend devuelve `access` y `refresh` JWT.
-3. El frontend guarda el token (localStorage o sessionStorage).
-4. Cada request protegida se envia con `Authorization: Bearer <token>`.
-5. La API consulta/persiste datos en MongoDB.
+```
+Cliente (React)
+    |
+    | HTTP (JWT Bearer token)
+    v
+API REST (Django + DRF)
+    |
+    | djongo
+    v
+MongoDB
+```
+
+1. El usuario inicia sesion desde el frontend o directamente contra `/api/token/`.
+2. El backend devuelve un par `access` + `refresh` JWT.
+3. Cada request protegida se envia con `Authorization: Bearer <token>`.
+4. La API consulta y persiste datos en MongoDB a traves de djongo (traductor SQL -> MongoDB).
+5. El frontend decide que vistas y acciones mostrar segun el grupo del usuario (obtenido de `/usuarios/{id}/grupos/`).
 
 ## Stack y componentes
 
 ### Backend (`cafeteria_be`)
 
-- Python 3.10
-- Django 4.1
-- Django REST Framework
-- Simple JWT
-- Djongo (MongoDB)
-- WhiteNoise (estaticos)
-- Gunicorn (produccion)
+| Componente | Version |
+|---|---|
+| Python | 3.10 |
+| Django | 4.1 |
+| Django REST Framework | 3.x |
+| Simple JWT | 5.x |
+| Djongo | 1.3.6 |
+| WhiteNoise | (estaticos en produccion) |
+| Gunicorn | (servidor WSGI en produccion) |
+| pymongo | 3.13.0 |
 
 ### Frontend (`cafeteria_fe`)
 
-- React 18
-- Vite
-- Bootstrap
+| Componente | Version |
+|---|---|
+| React | 18 |
+| Vite | 5.x |
+| React Router DOM | 6.x |
+| Bootstrap | 5.x |
+| React Bootstrap | 2.x |
 
-### Infra local
+### Infraestructura local
 
-- Docker Compose con 3 servicios:
-  - `mongo` (puerto `27017`)
-  - `backend` (puerto `8000`)
-  - `frontend` (puerto `5173`)
+Docker Compose con 3 servicios:
 
-## Modelo de datos
+| Servicio | Imagen | Puerto local |
+|---|---|---|
+| `mongo` | mongo:6 | 27017 |
+| `backend` | construida desde `cafeteria_be/` | 8000 |
+| `frontend` | construida desde `cafeteria_fe/` | 5173 |
 
-### Producto
+### Infraestructura en produccion (Render)
 
-- Archivo: `cafeteria_be/productos/models.py`
-- Campos:
-  - `id` (Integer, PK)
-  - `nombre` (string)
-  - `precio` (integer)
+- Backend: Web Service con Docker (Gunicorn, puerto 10000)
+- Frontend: Static Site construido con Vite, servido por Render CDN
+- Base de datos: MongoDB Atlas (free tier M0)
 
-### Pedido
+## Requisitos previos
 
-- Archivo: `cafeteria_be/pedidos/models.py`
-- Campos:
-  - `id` (Integer, PK)
-  - `mesa` (integer)
-  - `listo` (boolean)
-  - `fecha_pedido` (datetime)
-  - `lista_productos` (JSON con `{ producto_id, cantidad }`)
-  - `total_precio` (integer)
-  - `nombre_cliente` (text)
+### Docker
 
-`total_precio` se recalcula en backend al crear/editar pedidos (serializer).
+- Docker Engine 24+
+- Docker Compose v2
 
-### Usuario
+### Manual (sin Docker)
 
-- Se usa `django.contrib.auth.models.User`
-- Se usan `Group` de Django para roles de negocio.
-
-## Autenticacion y autorizacion
-
-- Endpoint de login JWT:
-  - `POST /api/token/`
-- Refresh token:
-  - `POST /api/token/refresh/`
-
-Headers esperados para endpoints protegidos:
-
-```http
-Authorization: Bearer <access_token>
-```
-
-## Grupos y permisos
-
-La aplicacion maneja roles mediante grupos de Django.
-
-Nombres de grupos usados en codigo:
-
-- `administrador`
-- `recepcion`
-- `cocina`
-
-Implementacion actual:
-
-- `IsRecepcionista` valida grupo `recepcion`
-- `IsCocinero` valida grupo `cocina`
-- Ademas se usa `IsAdminUser` de DRF para admin/staff
-
-Notas importantes:
-
-- El endpoint `GET /usuarios/{id}/grupos/` devuelve el primer grupo del usuario.
-- Conviene asignar un solo grupo principal por usuario para evitar ambiguedad.
-- Si un usuario no tiene grupo, las vistas que dependen de grupo pueden fallar o devolver 403/500 segun el caso.
-
-## API principal
-
-Las rutas se registran en `cafeteria_be/cafeteria_be/urls.py` y en los routers de cada app.
-
-### Auth
-
-- `POST /api/token/`
-- `POST /api/token/refresh/`
-
-### Productos (`/productos/`)
-
-- `GET /productos/`
-- `POST /productos/`
-- `GET /productos/{id}/`
-- `PUT /productos/{id}/`
-- `PATCH /productos/{id}/`
-- `DELETE /productos/{id}/`
-
-Permisos actuales en codigo: `IsAdminUser | IsRecepcionista | IsCocinero`.
-
-### Pedidos (`/pedidos/`)
-
-- `GET /pedidos/`
-- `POST /pedidos/`
-- `GET /pedidos/{id}/`
-- `PUT /pedidos/{id}/`
-- `PATCH /pedidos/{id}/`
-- `DELETE /pedidos/{id}/`
-- `GET /pedidos/{id}/productos/` (accion custom)
-
-Permisos actuales:
-
-- Listar/ver/editar y ver productos del pedido:
-  - `IsAdminUser | IsRecepcionista | IsCocinero`
-- Crear/eliminar:
-  - `IsAdminUser | IsRecepcionista`
-
-### Usuarios (`/usuarios/`)
-
-- `GET /usuarios/`
-- `POST /usuarios/`
-- `GET /usuarios/{id}/`
-- `PUT /usuarios/{id}/`
-- `PATCH /usuarios/{id}/`
-- `DELETE /usuarios/{id}/`
-- `GET /usuarios/{id}/grupos/` (accion custom)
-
-Permisos actuales:
-
-- CRUD usuarios: solo `IsAdminUser`
-- `grupos`: `IsAdminUser | IsRecepcionista | IsCocinero`
-
-## Variables de entorno
-
-Se usa `APP_ENV` para separar desarrollo y produccion.
-
-- `APP_ENV=development`
-- `APP_ENV=production`
-
-### Backend (minimas recomendadas)
-
-- `APP_ENV`
-- `SECRET_KEY`
-- `JWT_SECRET`
-- `DB_NAME`
-- `DB_HOST`
-
-Opcionales/utiles:
-
-- `DB_SSL`
-- `DB_SSL_ALLOW_INVALID_CERTS`
-- `ALLOWED_HOSTS`
-- `CORS_ALLOWED_ORIGINS`
-- `CSRF_TRUSTED_ORIGINS`
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`
-- `ADMIN_EMAIL`
-
-### Frontend
-
-- `APP_ENV`
-- `APP_API_BASE_URL` (opcional pero recomendado en produccion)
-
-### Archivos de ejemplo
-
-- `/.env.example`
-- `/cafeteria_be/.env.example`
-- `/cafeteria_fe/.env.example`
+- Python 3.10
+- Node.js 18+
+- MongoDB 6+ (local o remoto)
 
 ## Ejecucion local con Docker
 
-1. Copia el ejemplo de entorno raiz:
+### 1. Clonar y entrar al repositorio
+
+```bash
+git clone git@github.com:hezqiel7/cafeteria.git
+cd cafeteria
+```
+
+### 2. Copiar entorno
 
 ```bash
 cp .env.example .env
 ```
 
-2. Levanta los servicios:
+El archivo `.env.example` ya contiene valores por defecto funcionales para desarrollo local. El archivo `.env` generado debe tener al menos:
+
+```env
+APP_ENV=development
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD=admin
+```
+
+### 3. Levantar servicios
 
 ```bash
 docker compose up --build
 ```
 
-3. URLs locales:
+La primera vez descargara imagenes y construira los contenedores. Las siguientes veces puede omitirse `--build`.
 
-- Frontend: `http://localhost:5173`
-- Backend: `http://localhost:8000`
-- Admin Django: `http://localhost:8000/admin/`
-- MongoDB: `mongodb://localhost:27017`
+### 4. Acceder
 
-### Admin automatico en backend
+| Servicio | URL |
+|---|---|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:8000 |
+| Admin Django | http://localhost:8000/admin/ |
+| MongoDB (cliente externo) | mongodb://localhost:27017 |
 
-Al iniciar el contenedor backend:
+### 5. Detener
 
-- se ejecuta `python manage.py migrate`
-- se crea/actualiza un superusuario si existen:
-  - `ADMIN_USERNAME`
-  - `ADMIN_PASSWORD`
-  - `ADMIN_EMAIL`
+```bash
+docker compose down
+```
+
+Para eliminar tambien los volumenes (borra datos de MongoDB):
+
+```bash
+docker compose down -v
+```
+
+### Que pasa al iniciar el backend
+
+El script `cafeteria_be/start.sh` ejecuta automaticamente:
+
+1. `python manage.py migrate` — crea las colecciones/tablas en MongoDB.
+2. `python manage.py seed_fidelizacion` — carga datos demo del modulo de fidelizacion (clientes, reglas, conceptos, vencimientos, bolsas, usos) y crea los usuarios `recepcion` / `cocinero` con sus grupos.
+3. Creacion de superusuario admin — si no se pasan `ADMIN_USERNAME` / `ADMIN_PASSWORD` via env vars, se crea por defecto `admin` / `admin`.
+4. En desarrollo: `runserver`. En produccion: `collectstatic` + `gunicorn`.
 
 ## Ejecucion local sin Docker
 
@@ -247,12 +165,27 @@ Al iniciar el contenedor backend:
 
 ```bash
 cd cafeteria_be
+
+# Entorno virtual
 python -m venv .venv
-# activar entorno virtual
+source .venv/bin/activate   # Linux/Mac
+.venv\Scripts\activate       # Windows
+
+# Dependencias
 pip install -r requirements.txt
+
+# Migrar y cargar datos
 python manage.py migrate
+python manage.py seed_fidelizacion
+
+# Crear superusuario (opcional si ya existe admin por seed)
+python manage.py createsuperuser --username admin --email admin@local.dev
+
+# Iniciar
 python manage.py runserver
 ```
+
+> Nota: Asegurate de tener MongoDB corriendo en `localhost:27017` o ajustar `DB_HOST` en las env vars.
 
 ### Frontend
 
@@ -262,134 +195,391 @@ npm install
 npm run dev
 ```
 
-## Despliegue en Render
+El frontend espera el backend en `http://localhost:8000` por defecto (configurado en `src/config.js`).
 
-Archivo de referencia: `render.yaml`
+## Variables de entorno
 
-Servicios definidos:
+### Backend
 
-- Backend web en Docker (`rootDir: cafeteria_be`)
-- Frontend estatico (`rootDir: cafeteria_fe`, `build: npm ci && npm run build`, `publish: dist`)
+| Variable | Obligatoria | Default (desarrollo) | Default (produccion) | Descripcion |
+|---|---|---|---|---|
+| `APP_ENV` | Si | `development` | `production` | Controla modo desarrollo vs produccion |
+| `SECRET_KEY` | Si | `django-insecure-...` | (definir en Render) | Clave secreta de Django |
+| `JWT_SECRET` | Si | (usa SECRET_KEY) | (definir en Render) | Clave para firmar JWTs |
+| `DB_NAME` | Si | `cafeteria_db` | `cafeteria_db` | Nombre de la base de datos |
+| `DB_HOST` | Si | `mongodb://mongo:27017/` | hardcodeado a Atlas | URI de conexion MongoDB |
+| `ADMIN_USERNAME` | No | `admin` | `admin` | Username del superusuario inicial |
+| `ADMIN_PASSWORD` | No | `admin` | `admin` | Password del superusuario inicial |
+| `ADMIN_EMAIL` | No | `admin@local.dev` | `admin@local.dev` | Email del superusuario |
+| `ALLOWED_HOSTS` | No | `*` | (definir) | Hosts permitidos por Django |
+| `CORS_ALLOWED_ORIGINS` | No | `http://localhost:5173` | (definir en Render) | Origenes permitidos por CORS |
+| `CSRF_TRUSTED_ORIGINS` | No | — | (definir en Render) | Origenes CSRF confiables |
+| `DB_SSL` | No | — | `true` (en produccion) | Usar SSL para MongoDB |
+| `DB_SSL_ALLOW_INVALID_CERTS` | No | — | `true` (en produccion) | Permitir certificados SSL invalidos |
 
-Recomendaciones:
+> En produccion (Render) `DB_HOST` esta hardcodeado en `settings.py` apuntando a MongoDB Atlas. La env var `DB_HOST` no se usa en produccion.
 
-- Definir `APP_API_BASE_URL` del frontend con la URL publica real del backend desplegado.
-- Configurar en backend:
-  - `ALLOWED_HOSTS`
-  - `CORS_ALLOWED_ORIGINS`
-  - `CSRF_TRUSTED_ORIGINS`
-- Usar `DB_HOST` apuntando a MongoDB accesible desde Render.
+### Frontend
 
-## Flujo funcional de la app
+| Variable | Obligatoria | Default | Descripcion |
+|---|---|---|---|
+| `APP_API_BASE_URL` | No | `http://localhost:8000` | URL base del backend (importante en produccion) |
 
-1. Login con usuario y contrasena.
-2. Obtencion de JWT.
-3. Consulta de grupo del usuario (`/usuarios/{id}/grupos/`).
-4. UI habilita acciones segun rol.
-5. Gestion de pedidos y productos via API.
-6. Administradores y recepcionistas pueden acceder al modulo `Fidelizacion`.
-7. Fidelizacion opera contra el backend y mantiene datos persistidos en MongoDB.
+## Usuarios demo
+
+Al iniciar el backend (con Docker o manualmente con `seed_fidelizacion`) se crean estos usuarios:
+
+| Usuario | Password | Grupo | Rol |
+|---|---|---|---|
+| `admin` | `admin` | — | Superusuario Django (staff, acceso total) |
+| `recepcion` | `recepcion` | `recepcion` | Puede crear/ver pedidos y acceder a Fidelizacion |
+| `cocinero` | `cocinero` | `cocina` | Puede ver pedidos y marcar como listos |
+
+Todos los usuarios pueden iniciar sesion en `/admin/` y en el frontend.
+
+## Autenticacion y autorizacion
+
+### Endpoints JWT
+
+```
+POST /api/token/          -> { access, refresh }
+POST /api/token/refresh/  -> { access }
+```
+
+Headers para endpoints protegidos:
+
+```http
+Authorization: Bearer <access_token>
+```
+
+### Permisos por endpoint
+
+| Endpoint | Metodos | Quien puede |
+|---|---|---|
+| `/productos/` | GET, POST, PUT, PATCH, DELETE | Administrador, Recepcion, Cocina |
+| `/pedidos/` | GET, PUT, PATCH | Administrador, Recepcion, Cocina |
+| `/pedidos/` | POST, DELETE | Administrador, Recepcion |
+| `/usuarios/` | Todos | Solo Administrador |
+| `/usuarios/{id}/grupos/` | GET | Administrador, Recepcion, Cocina |
+| `/fidelizacion/*` | Todos | Administrador, Recepcion |
+
+## Grupos y permisos
+
+### Grupos definidos
+
+| Grupo | Nombre en codigo | Descripcion |
+|---|---|---|
+| `administrador` | — | Grupo reservado para admins no-superusuario |
+| `recepcion` | `IsRecepcionista` | Atencion al cliente, creacion de pedidos, fidelizacion |
+| `cocina` | `IsCocinero` | Vista de pedidos, marcar como listo |
+
+### Classes de permiso en backend
+
+- `IsAdminUser` — DRF nativo, requiere `is_staff=True`
+- `IsRecepcionista` — permisos.py, requiere grupo `recepcion`
+- `IsCocinero` — permisos.py, requiere grupo `cocina`
+
+Se usan combinadas con OR en las vistas (ej: `IsAdminUser | IsRecepcionista`).
+
+## API principal
+
+Todas las rutas estan montadas bajo `/api/` en el router principal.
+
+### Auth
+
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| POST | `/api/token/` | Obtener JWT (login) |
+| POST | `/api/token/refresh/` | Refrescar JWT |
+
+### Productos
+
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/productos/` | Listar todos |
+| POST | `/api/productos/` | Crear |
+| GET | `/api/productos/{id}/` | Obtener uno |
+| PUT | `/api/productos/{id}/` | Actualizar completo |
+| PATCH | `/api/productos/{id}/` | Actualizar parcial |
+| DELETE | `/api/productos/{id}/` | Eliminar |
+
+Campos del modelo: `id`, `nombre`, `precio`.
+
+### Pedidos
+
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/pedidos/` | Listar todos |
+| POST | `/api/pedidos/` | Crear |
+| GET | `/api/pedidos/{id}/` | Obtener uno |
+| PUT | `/api/pedidos/{id}/` | Actualizar completo |
+| PATCH | `/api/pedidos/{id}/` | Actualizar parcial |
+| DELETE | `/api/pedidos/{id}/` | Eliminar |
+| GET | `/api/pedidos/{id}/productos/` | Productos del pedido |
+
+Campos del modelo: `id`, `mesa`, `listo`, `fecha_pedido`, `lista_productos` (JSON), `total_precio` (autocalculado), `nombre_cliente`.
+
+### Usuarios
+
+| Metodo | Ruta | Descripcion |
+|---|---|---|
+| GET | `/api/usuarios/` | Listar todos (solo admin) |
+| POST | `/api/usuarios/` | Crear (solo admin) |
+| GET | `/api/usuarios/{id}/` | Obtener uno (solo admin) |
+| PUT | `/api/usuarios/{id}/` | Actualizar (solo admin) |
+| PATCH | `/api/usuarios/{id}/` | Actualizar parcial (solo admin) |
+| DELETE | `/api/usuarios/{id}/` | Eliminar (solo admin) |
+| GET | `/api/usuarios/{id}/grupos/` | Obtener grupo del usuario |
+
+### Fidelizacion
+
+Endpoints bajo `/api/fidelizacion/`. Todos protegidos, requieren admin o recepcion.
+
+| Recurso | Metodos |
+|---|---|
+| `/api/fidelizacion/clientes/` | GET, POST, PUT, PATCH, DELETE |
+| `/api/fidelizacion/conceptos/` | GET, POST, PUT, PATCH, DELETE |
+| `/api/fidelizacion/reglas/` | GET, POST, PUT, PATCH, DELETE |
+| `/api/fidelizacion/vencimientos/` | GET, POST, PUT, PATCH, DELETE |
+| `/api/fidelizacion/bolsas/` | GET, POST |
+| `/api/fidelizacion/usos/` | GET, POST |
+| `/api/fidelizacion/cargar-puntos/` | POST |
+| `/api/fidelizacion/usar-puntos/` | POST |
+| `/api/fidelizacion/procesar-vencimiento/` | POST |
+| `/api/fidelizacion/consultas/` | GET (con filtros) |
+
+> Las acciones personalizadas (`cargar-puntos`, `usar-puntos`, `procesar-vencimiento`, `consultas`) son endpoints con logica de negocio detallada en `services.py`.
 
 ## Modulo de fidelizacion
 
-El sistema de fidelizacion esta integrado entre el backend Django y el frontend React.
-Permite administrar clientes, reglas, puntos, usos y vencimientos con datos persistidos en MongoDB.
-
 ### Objetivo
 
-- Administrar el ciclo completo de fidelizacion de clientes.
-- Mantener el proyecto actual de cafeteria funcionando con login y roles existentes.
-- Permitir una ejecucion directa con datos de ejemplo cargados desde el backend.
+Administrar el ciclo completo de fidelizacion de clientes: asignacion de puntos por compras, uso de puntos con descuento FIFO, reglas de equivalencia, vencimiento programado y consultas.
 
-### Ubicacion del codigo
+### Modelos
 
-- Entrada principal: `cafeteria_fe/src/FidelizacionApp.jsx`
-- Modulos: `cafeteria_fe/src/fidelizacion/`
-- API frontend: `cafeteria_fe/src/fidelizacion/api.js`
-- Backend: `cafeteria_be/fidelizacion/`
-- Seed inicial: `cafeteria_be/fidelizacion/management/commands/seed_fidelizacion.py`
+| Modelo | Descripcion |
+|---|---|
+| `ClienteFidelizacion` | Datos del cliente (nombre, documento, nacionalidad, email, telefono) |
+| `ConceptoUsoPuntos` | Concepto por el cual se usan puntos (ej: vale descuento, vale premio) |
+| `ReglaAsignacionPuntos` | Regla de equivalencia monto/puntos (por rangos de monto de operacion) |
+| `VencimientoPuntos` | Periodo de vigencia de puntos (fecha inicio-fin, dias de duracion) |
+| `BolsaPuntos` | Bolsa generada al cargar puntos (saldo, fechas, monto de operacion) |
+| `UsoPuntos` | Cabecera de uso de puntos con detalle FIFO por bolsa |
+| `ProcesoFidelizacion` | Control de la ultima ejecucion del proceso de vencimiento |
 
-### Como se accede
+### Servicios (logica de negocio)
 
-1. Iniciar sesion en la app con un usuario administrador o recepcionista.
-2. Abrir la pesta?a `Fidelizacion` desde la navbar.
-3. Navegar entre las secciones del modulo.
+Los servicios estan en `cafeteria_be/fidelizacion/services.py`:
 
-Usuario recomendado para demo:
+| Servicio | Funcion |
+|---|---|
+| `cargar_puntos` | Toma un cliente y un monto de operacion, aplica la regla de equivalencia, crea una bolsa de puntos |
+| `usar_puntos` | Toma un cliente, concepto y puntaje, descuenta por FIFO de las bolsas no vencidas, registra el uso |
+| `procesar_vencimiento` | Marca como vencidas las bolsas cuya fecha de caducidad ya paso |
+| `puntos_a_vencer` | Consulta puntos que vencen en un rango de fechas |
+| `puntos_vencidos_por_cliente` | Muestra puntos vencidos agrupados por cliente |
 
-- `admin / admin`
-- `recepcion / recepcion`
+### Logica de equivalencia
 
-### Persistencia y alcance tecnico
+Las `ReglaAsignacionPuntos` definen rangos de monto de operacion:
 
-- Los datos de fidelizacion se guardan en MongoDB desde el backend.
-- Al iniciar Docker se cargan datos de ejemplo si todavia no existen.
-- Las operaciones se exponen mediante endpoints protegidos con JWT.
-- El modulo permite acceso completo a usuarios administradores y recepcionistas.
+| Limite inferior | Limite superior | Monto por punto |
+|---|---|
+| Gs. 0 | Gs. 199.999 | Gs. 50.000 = 1 punto |
+| Gs. 200.000 | Gs. 499.999 | Gs. 30.000 = 1 punto |
+| Gs. 500.000 | — | Gs. 20.000 = 1 punto |
 
-### Cobertura exacta de la consigna
+Ejemplo: una compra de Gs. 600.000 = 12 puntos (500.000 / 20.000 + 100.000 / 30.000 segun reglas).
 
-- CRUD de clientes.
-- CRUD de conceptos de uso de puntos.
-- CRUD de reglas de asignacion.
-- CRUD de vencimientos.
-- Tabla de bolsa de puntos.
-- Historial y detalle FIFO de uso de puntos.
-- Servicios de carga, uso y equivalencia.
-- Consultas por cliente, concepto, fecha, rango y proximidad de vencimiento.
-- Proceso de vencimiento manual para actualizar bolsas vencidas.
+### Uso FIFO
 
-### Flujo funcional del modulo
+Al usar puntos, se descuentan siempre de las bolsas mas antiguas primero (FIFO). El detalle del uso registra exactamente que bolsas se consumieron y cuanto de cada una.
 
-1. Se administran clientes, conceptos, reglas y vencimientos desde ABMs simples.
-2. El servicio `cargar puntos` calcula la equivalencia segun la regla aplicable y crea una nueva bolsa.
-3. El servicio `usar puntos` descuenta saldo por FIFO y genera cabecera mas detalle del uso.
-4. La vista de `Bolsa` muestra saldo, asignacion, caducidad y estado.
-5. La vista de `Uso de puntos` muestra el historial y el detalle de bolsas consumidas.
-6. `Consultas` permite filtrar los reportes principales pedidos por el profesor.
-7. `Proceso planificado` ejecuta la actualizacion de bolsas expiradas.
+### Como se accede desde el frontend
 
-### Que se puede demostrar rapidamente
+1. Iniciar sesion con `admin` / `admin` o `recepcion` / `recepcion`.
+2. Hacer clic en la pestana `Fidelizacion` en la barra de navegacion.
+3. Navegar entre las secciones: Clientes, Reglas, Conceptos, Vencimientos, Bolsas, Usos, Consultas.
 
-1. Alta de un cliente.
-2. Alta o ajuste de una regla de puntos.
-3. Carga de puntos para un cliente con un monto de operacion.
-4. Uso de puntos con descuento FIFO.
-5. Visualizacion de la bolsa generada y del historial de uso.
-6. Consulta de puntos a vencer.
-7. Ejecucion manual del proceso planificado.
+### Demo rapido
+
+1. Ir a Clientes y dar de alta uno nuevo.
+2. Ir a Reglas y ajustar una regla de puntos.
+3. Volver a Clientes, seleccionar el cliente y usar "Cargar puntos" con un monto.
+4. Ir a Usos y usar "Usar puntos" para consumir saldo.
+5. Ir a Bolsas para ver el saldo restante.
+6. Ir a Consultas para ver "Puntos a vencer" en un rango de fechas.
+
+## Datos de semilla
+
+Al ejecutar `python manage.py seed_fidelizacion` se cargan:
+
+- 3 clientes demo (Ana Gomez, Luis Benitez, Maria Fernandez)
+- 3 conceptos de uso (Vale descuento, Vale premio, Vale consumicion)
+- 3 reglas de asignacion (tramos de monto)
+- 2 periodos de vencimiento
+- 2 bolsas de puntos con saldo
+- 1 uso de puntos con detalle FIFO
+- 1 registro de proceso de fidelizacion
+- 2 usuarios demo (recepcion, cocinero) con sus grupos
+
+## Despliegue en Render
+
+### Archivo de referencia
+
+`render.yaml` en la raiz del repositorio define dos servicios:
+
+```
+cafeteria-be (Web Service)
+  rootDir: cafeteria_be
+  build: docker build
+  env: APP_ENV=production
+
+cafeteria-fe (Static Site)
+  rootDir: cafeteria_fe
+  build: npm ci && npm run build
+  publish: dist
+```
+
+### Configuracion manual en Render
+
+#### Backend (Web Service)
+
+1. Crear Web Service desde el repo.
+2. `Root Directory`: `cafeteria_be`
+3. `Build Command`: (usar Dockerfile)
+4. `Start Command`: `./start.sh`
+5. Variables de entorno requeridas:
+
+| Variable | Valor |
+|---|---|
+| `APP_ENV` | `production` |
+| `SECRET_KEY` | (clave unica) |
+| `JWT_SECRET` | (clave unica) |
+| `ADMIN_USERNAME` | `admin` |
+| `ADMIN_PASSWORD` | `admin` |
+| `CORS_ALLOWED_ORIGINS` | `https://cafeteria-frontend-yxjk.onrender.com` |
+| `CSRF_TRUSTED_ORIGINS` | `https://cafeteria-frontend-yxjk.onrender.com` |
+
+6. `DB_HOST` esta hardcodeado en settings.py apuntando a MongoDB Atlas. No es necesario definirlo como env var.
+
+#### Frontend (Static Site)
+
+1. Crear Static Site desde el repo.
+2. `Root Directory`: `cafeteria_fe`
+3. `Build Command`: `npm ci && npm run build`
+4. `Publish Directory`: `dist`
+5. Variable de entorno:
+
+| Variable | Valor |
+|---|---|
+| `APP_API_BASE_URL` | `https://cafeteria-backend-aicu.onrender.com` |
+
+#### Base de datos (MongoDB Atlas)
+
+1. Crear cluster free tier M0 en MongoDB Atlas.
+2. En Network Access, permitir acceso desde cualquier IP (`0.0.0.0/0`) o desde las IPs de Render.
+3. Crear usuario de base de datos con password.
+4. La URI de conexion se hardcodea en `settings.py` en produccion:
+
+```
+mongodb+srv://<user>:<password>@<cluster>.mongodb.net/?appName=<name>
+```
+
+### URLs de produccion actuales
+
+| Servicio | URL |
+|---|---|
+| Backend API | https://cafeteria-backend-aicu.onrender.com |
+| Frontend | https://cafeteria-frontend-yxjk.onrender.com |
+| Admin Django | https://cafeteria-backend-aicu.onrender.com/admin/ |
 
 ## Estructura del repositorio
 
 ```text
 cafeteria/
-??? cafeteria_be/              # Backend Django + DRF
-?   ??? cafeteria_be/          # settings, urls, wsgi, permissions
-?   ??? productos/             # modulo productos
-?   ??? pedidos/               # modulo pedidos
-?   ??? usuarios/              # modulo usuarios
-?   ??? requirements.txt
-?   ??? start.sh
-??? cafeteria_fe/              # Frontend React + Vite
-?   ??? src/
-?   ??? package.json
-?   ??? start.sh
-??? docker-compose.yml
-??? render.yaml
-??? README.md
+├── cafeteria_be/                  # Backend Django + DRF
+│   ├── cafeteria_be/
+│   │   ├── __init__.py
+│   │   ├── settings.py            # Configuracion Django (dev/prod)
+│   │   ├── urls.py                # Rutas principales
+│   │   ├── wsgi.py                # Entry point WSGI
+│   │   └── permissions.py         # Clases de permiso personalizadas
+│   ├── productos/                 # Modulo productos (modelo, views, serializer, urls)
+│   ├── pedidos/                   # Modulo pedidos
+│   ├── usuarios/                  # Modulo usuarios
+│   ├── fidelizacion/              # Modulo fidelizacion
+│   │   ├── models.py              # Modelos (Cliente, Concepto, Regla, Vencimiento, Bolsa, Uso, Proceso)
+│   │   ├── serializers.py         # Serializers
+│   │   ├── views.py               # ViewSets con permisos
+│   │   ├── urls.py                # Rutas del modulo
+│   │   ├── services.py            # Logica de negocio (cargar, usar, vencimiento, consultas)
+│   │   └── management/commands/
+│   │       └── seed_fidelizacion.py  # Carga de datos demo
+│   ├── requirements.txt
+│   ├── Dockerfile
+│   ├── start.sh                   # Script de inicio
+│   └── .env.example
+├── cafeteria_fe/                  # Frontend React + Vite
+│   ├── src/
+│   │   ├── App.jsx                # App principal con routing
+│   │   ├── FidelizacionApp.jsx    # Modulo fidelizacion (entrada)
+│   │   ├── fidelizacion/          # Componentes del modulo
+│   │   ├── components/            # Componentes compartidos
+│   │   ├── config.js              # Configuracion (URL base de API)
+│   │   ├── api.js                 # Cliente API con JWT
+│   │   └── main.jsx               # Entry point
+│   ├── package.json
+│   ├── vite.config.js
+│   ├── start.sh
+│   └── .env.example
+├── .env.example                   # Variables de entorno raiz
+├── docker-compose.yml             # Orquestacion local
+├── render.yaml                    # Configuracion Render
+└── README.md
 ```
 
 ## Problemas comunes
 
-- `401 Unauthorized`:
-  - token vencido/invalido o falta header `Authorization`
-- `403 Forbidden`:
-  - el usuario no pertenece al grupo requerido
-- Error de CORS:
-  - revisar `CORS_ALLOWED_ORIGINS` y `APP_API_BASE_URL`
-- Backend no conecta a Mongo:
-  - validar `DB_HOST`, `DB_NAME` y SSL si aplica
+### 401 Unauthorized
 
----
+- El token JWT esta vencido o es invalido.
+- Falta el header `Authorization: Bearer <token>`.
+- Solucion: renovar token en `/api/token/refresh/` o volver a iniciar sesion.
 
-Si quieres, en un siguiente paso te puedo preparar tambien un `README` tecnico separado para `cafeteria_be` y otro para `cafeteria_fe`, dejando este README raiz como vista general del monorepo.
+### 403 Forbidden
+
+- El usuario no pertenece al grupo requerido para esa accion.
+- Verificar el grupo del usuario en `/api/usuarios/{id}/grupos/`.
+- Asignar el grupo correcto desde el admin de Django.
+
+### Error de CORS
+
+- El frontend no puede alcanzar el backend por politicas de CORS.
+- Revisar `CORS_ALLOWED_ORIGINS` en el backend.
+- Revisar `APP_API_BASE_URL` en el frontend (debe coincidir con la URL real del backend).
+- En produccion, ambos deben apuntar a las URLs de Render.
+
+### Backend no conecta a MongoDB
+
+- Verificar que MongoDB este corriendo: `docker compose ps` (local) o revisar estado en Atlas (produccion).
+- Validar `DB_HOST` (local) o la cadena hardcodeada en `settings.py` (produccion).
+- Si es MongoDB Atlas, verificar Network Access (whitelist de IPs).
+- Si hay error SSL/TLS, verificar `DB_SSL_ALLOW_INVALID_CERTS=true`.
+
+### El contenedor backend no arranca
+
+- Revisar logs: `docker compose logs backend`.
+- Causas comunes: MongoDB no esta listo aun (el backend intenta conectar antes de que Mongo termine de iniciar).
+- Solucion: esperar unos segundos y ejecutar `docker compose restart backend`.
+
+### El seed de fidelizacion falla
+
+- Ejecutar manualmente: `docker compose exec backend python manage.py seed_fidelizacion`.
+- Verificar que las migraciones esten al dia: `docker compose exec backend python manage.py migrate`.
+
+### No aparece el modulo de fidelizacion en el frontend
+
+- Iniciar sesion con un usuario que tenga grupo `recepcion` o sea `admin` (staff).
+- La pestana "Fidelizacion" solo se muestra a usuarios con esos roles.

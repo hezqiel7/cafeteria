@@ -2,7 +2,7 @@ const appEnv = (import.meta.env.APP_ENV || 'development').toLowerCase()
 
 const defaultApiBaseUrl =
   appEnv === 'production'
-    ? 'https://cafeteria-be.onrender.com'
+    ? 'https://cafeteria-backend-aicu.onrender.com'
     : 'http://localhost:8000'
 
 const rawApiBaseUrl =

@@ -51,7 +51,10 @@ render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME")
 if render_hostname:
     default_allowed_hosts.append(render_hostname)
 if IS_PRODUCTION:
-    default_allowed_hosts.append("cafeteria-be.onrender.com")
+    render_frontend_hostname = os.environ.get("RENDER_FRONTEND_HOSTNAME")
+    if render_frontend_hostname:
+        default_allowed_hosts.append(render_frontend_hostname)
+    default_allowed_hosts.append("cafeteria-backend-aicu.onrender.com")
 
 ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", default_allowed_hosts)
 
@@ -122,10 +125,10 @@ SIMPLE_JWT = {
 }
 
 default_frontend_origin = (
-    "https://cafeteria-fe.onrender.com" if IS_PRODUCTION else "http://localhost:5173"
+    "https://cafeteria-frontend-yxjk.onrender.com" if IS_PRODUCTION else "http://localhost:5173"
 )
 default_backend_origin = (
-    "https://cafeteria-be.onrender.com" if IS_PRODUCTION else "http://localhost:8000"
+    "https://cafeteria-backend-aicu.onrender.com" if IS_PRODUCTION else "http://localhost:8000"
 )
 
 default_public_origins = [default_frontend_origin, default_backend_origin]
@@ -142,8 +145,8 @@ CSRF_TRUSTED_ORIGINS = env_list(
     default_public_origins,
 )
 
-default_db_host = "mongodb://mongo:27017/" if not IS_PRODUCTION else None
-db_host = os.environ.get("DB_HOST", default_db_host)
+default_db_host = "mongodb://mongo:27017/"
+db_host = "mongodb+srv://cafeteria:cafeteria@cafeteria.7h7rpzp.mongodb.net/?appName=cafeteria" if IS_PRODUCTION else default_db_host
 if not db_host:
     raise RuntimeError("DB_HOST is required when APP_ENV=production")
 
